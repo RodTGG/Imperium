@@ -48,6 +48,8 @@ private:
 	VkSwapchainKHR gSwapChain;
 	VkFormat gSwapChainFormat;
 	VkExtent2D gSwapChainExtent;
+	VkRenderPass gRenderPass;
+	VkPipelineLayout gPipelineLayout;
 
 	std::vector<VkSurfaceFormatKHR> gFormats;
 	std::vector<VkPresentModeKHR> gPresentModes;
@@ -67,6 +69,7 @@ private:
 	void createSwapChain();
 	void createImageViews();
 	void createGraphicsPipeline();
+	void createRenderPass();
 
 	bool isDeviceSuitable(VkPhysicalDevice aDevice);
 	bool checkValidationLayerSupport();
@@ -78,6 +81,7 @@ private:
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availableModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t locatio, int32_t code, const char* layerPrefix, const char* msg, void* userData);
 	VkResult createDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback);
