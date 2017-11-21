@@ -50,9 +50,11 @@ private:
 	VkExtent2D gSwapChainExtent;
 	VkRenderPass gRenderPass;
 	VkPipelineLayout gPipelineLayout;
+	VkPipeline gGraphicsPipeline;
 
 	std::vector<VkSurfaceFormatKHR> gFormats;
 	std::vector<VkPresentModeKHR> gPresentModes;
+	std::vector<VkFramebuffer> gSwapChainFramebuffers;
 
 	void initVulkan();
 	void initWindow();
@@ -70,6 +72,7 @@ private:
 	void createImageViews();
 	void createGraphicsPipeline();
 	void createRenderPass();
+	void createFramebuffers();
 
 	bool isDeviceSuitable(VkPhysicalDevice aDevice);
 	bool checkValidationLayerSupport();

@@ -23,6 +23,7 @@ void Dominus::initVulkan()
 	createLogicalDevice();
 	createSwapChain();
 	createImageViews();
+	createRenderPass();
 	createGraphicsPipeline();
 }
 
@@ -273,6 +274,27 @@ void Dominus::createGraphicsPipeline()
 	if (vkCreatePipelineLayout(gDevice, &pipelineLayoutInfo, nullptr, &gPipelineLayout) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create pipeline layout!");
 
+	VkGraphicsPipelineCreateInfo pipelineInfo = {};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.stageCount = 2;
+	pipelineInfo.pStages = shaderStages;
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pViewportState = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pMultisampleState = &multisampling;
+	pipelineInfo.pDepthStencilState = nullptr;			// Optional
+	pipelineInfo.pColorBlendState = &colorBlending;
+	pipelineInfo.pDynamicState = nullptr;				// Optional
+	pipelineInfo.layout = gPipelineLayout;
+	pipelineInfo.renderPass = gRenderPass;
+	pipelineInfo.subpass = 0;
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;	// Optional
+	pipelineInfo.basePipelineIndex = -1;				// Optional
+
+	if (vkCreateGraphicsPipelines(gDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &gGraphicsPipeline) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create graphics pipeline!");
+
 	vkDestroyShaderModule(gDevice, fragShaderModule, nullptr);
 	vkDestroyShaderModule(gDevice, vertShaderModule, nullptr);
 }
@@ -307,6 +329,27 @@ void Dominus::createRenderPass()
 
 	if (vkCreateRenderPass(gDevice, &renderPassInfo, nullptr, &gRenderPass) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create render pass!");
+}
+
+void Dominus::createFramebuffers()
+{
+	gSwapChainFramebuffers.resize(swapChainImageViews.size());
+
+	for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+		VkImageView attachments[] = { swapChainImageViews[i] };
+
+		VkFramebufferCreateInfo framebufferInfo = {};
+		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo.renderPass = gRenderPass;
+		framebufferInfo.attachmentCount = 1;
+		framebufferInfo.pAttachments = attachments;
+		framebufferInfo.width = gSwapChainExtent.width;
+		framebufferInfo.height = gSwapChainExtent.height;
+		framebufferInfo.layers = 1;
+
+		if (vkCreateFramebuffer(gDevice, &framebufferInfo, nullptr, &gSwapChainFramebuffers[i]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to create framebuffer!");
+	}
 }
 
 void Dominus::setupDebugCallback()
@@ -457,12 +500,26 @@ void Dominus::gameLoop()
 
 void Dominus::cleanUp()
 {
+	for (VkFramebuffer buffer : gSwapChainFramebuffers) 
+	{
+		vkDestroyFramebuffer(gDevice, buffer, nullptr);
+	}
+
+	/*for (size_t i = 0; i < gSwapChainFramebuffers.size(); i++) {
+		vkDestroyFramebuffer(gDevice, gSwapChainFramebuffers[i], nullptr);
+	}*/
+
+	vkDestroyPipeline(gDevice, gGraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(gDevice, gPipelineLayout, nullptr);
 	vkDestroyRenderPass(gDevice, gRenderPass, nullptr);
 
-	for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-		vkDestroyImageView(gDevice, swapChainImageViews[i], nullptr);
+	for (VkImageView view : swapChainImageViews) {
+		vkDestroyImageView(gDevice, view, nullptr);
 	}
+
+	/*for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+		vkDestroyImageView(gDevice, swapChainImageViews[i], nullptr);
+	}*/
 
 
 	vkDestroySwapchainKHR(gDevice, gSwapChain, nullptr);
@@ -577,7 +634,7 @@ std::vector<char> Dominus::readFile(const std::string & fileName)
 	std::cout << "Loading: " << fileName;
 	std::ifstream file(fileName, std::ios::ate | std::ios::binary);
 
-	if (!file.is_open()) 
+	if (!file.is_open())
 	{
 		throw std::runtime_error("Failed to open file!");
 	}
