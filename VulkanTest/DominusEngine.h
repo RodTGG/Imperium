@@ -51,10 +51,15 @@ private:
 	VkRenderPass gRenderPass;
 	VkPipelineLayout gPipelineLayout;
 	VkPipeline gGraphicsPipeline;
+	VkCommandPool commandPool;
+
+	VkSemaphore imageAvailableSemaphore;
+	VkSemaphore renderFinishedSemaphore;
 
 	std::vector<VkSurfaceFormatKHR> gFormats;
 	std::vector<VkPresentModeKHR> gPresentModes;
 	std::vector<VkFramebuffer> gSwapChainFramebuffers;
+	std::vector<VkCommandBuffer> commandBuffers;
 
 	void initVulkan();
 	void initWindow();
@@ -73,6 +78,10 @@ private:
 	void createGraphicsPipeline();
 	void createRenderPass();
 	void createFramebuffers();
+	void createCommandPool();
+	void createCommandBuffers();
+	void createSempahores();
+	void drawFrame();
 
 	bool isDeviceSuitable(VkPhysicalDevice aDevice);
 	bool checkValidationLayerSupport();
