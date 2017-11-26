@@ -436,7 +436,15 @@ void Dominus::drawFrame()
 	VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
 	VkSemaphore signalSemaphores[] = { renderFinishedSemaphore };
 
-	vkAcquireNextImageKHR(gDevice, gSwapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(gDevice, gSwapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+		recreateSwapChain();
+		return;
+	}
+	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+		throw std::runtime_error("failed to acquire swap chain image!");
+	}
 
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -462,8 +470,55 @@ void Dominus::drawFrame()
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.pResults = nullptr;		// Optional
 
-	vkQueuePresentKHR(gPresentQueue, &presentInfo);
+	result = vkQueuePresentKHR(gPresentQueue, &presentInfo);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+		recreateSwapChain();
+	else if (result != VK_SUCCESS)
+		throw std::runtime_error("failed to present swap chain image!");
+
 	vkQueueWaitIdle(gPresentQueue);
+}
+
+void Dominus::recreateSwapChain()
+{
+	vkDeviceWaitIdle(gDevice);
+
+	cleanupSwapChain();
+	createSwapChain();
+	createImageViews();
+	createRenderPass();
+	createGraphicsPipeline();
+	createFramebuffers();
+	createCommandBuffers();
+}
+
+void Dominus::cleanupSwapChain()
+{
+	for (VkFramebuffer buffer : gSwapChainFramebuffers)
+	{
+		vkDestroyFramebuffer(gDevice, buffer, nullptr);
+	}
+
+	/*for (size_t i = 0; i < gSwapChainFramebuffers.size(); i++) {
+	vkDestroyFramebuffer(gDevice, gSwapChainFramebuffers[i], nullptr);
+	}*/
+
+
+	vkFreeCommandBuffers(gDevice, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+	vkDestroyPipeline(gDevice, gGraphicsPipeline, nullptr);
+	vkDestroyPipelineLayout(gDevice, gPipelineLayout, nullptr);
+	vkDestroyRenderPass(gDevice, gRenderPass, nullptr);
+
+	for (VkImageView view : swapChainImageViews) {
+		vkDestroyImageView(gDevice, view, nullptr);
+	}
+
+	vkDestroySwapchainKHR(gDevice, gSwapChain, nullptr);
+	/*for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+	vkDestroyImageView(gDevice, swapChainImageViews[i], nullptr);
+	}*/
+
 }
 
 void Dominus::setupDebugCallback()
@@ -592,9 +647,11 @@ void Dominus::initWindow()
 	std::cout << "Running GLFW (" << major << "," << minor << "," << revision << ")" << std::endl;
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 	gWindow = glfwCreateWindow(WIDTH, HEIGHT, "VulkanTestWindow", nullptr, nullptr);
+	glfwSetWindowUserPointer(gWindow, this);
+	glfwSetWindowSizeCallback(gWindow, this->onWindowResized);
 }
 
 void Dominus::run()
@@ -617,34 +674,10 @@ void Dominus::gameLoop()
 
 void Dominus::cleanUp()
 {
+	cleanupSwapChain();
 	vkDestroySemaphore(gDevice, renderFinishedSemaphore, nullptr);
 	vkDestroySemaphore(gDevice, imageAvailableSemaphore, nullptr);
-
 	vkDestroyCommandPool(gDevice, commandPool, nullptr);
-
-	for (VkFramebuffer buffer : gSwapChainFramebuffers)
-	{
-		vkDestroyFramebuffer(gDevice, buffer, nullptr);
-	}
-
-	/*for (size_t i = 0; i < gSwapChainFramebuffers.size(); i++) {
-		vkDestroyFramebuffer(gDevice, gSwapChainFramebuffers[i], nullptr);
-	}*/
-
-	vkDestroyPipeline(gDevice, gGraphicsPipeline, nullptr);
-	vkDestroyPipelineLayout(gDevice, gPipelineLayout, nullptr);
-	vkDestroyRenderPass(gDevice, gRenderPass, nullptr);
-
-	for (VkImageView view : swapChainImageViews) {
-		vkDestroyImageView(gDevice, view, nullptr);
-	}
-
-	/*for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-		vkDestroyImageView(gDevice, swapChainImageViews[i], nullptr);
-	}*/
-
-
-	vkDestroySwapchainKHR(gDevice, gSwapChain, nullptr);
 	vkDestroyDevice(gDevice, nullptr);
 	destroyDebugReportCallbackEXT(gInstance, gCallback, nullptr);
 	vkDestroySurfaceKHR(gInstance, gSurface, nullptr);
@@ -751,6 +784,15 @@ std::vector<const char*> Dominus::getRequiredExtensions()
 	return extensions;
 }
 
+void Dominus::onWindowResized(GLFWwindow * window, int width, int height)
+{
+	if (width <= 0 || height <= 0)
+		return;
+
+	Dominus* app = reinterpret_cast<Dominus*>(glfwGetWindowUserPointer(window));
+	app->recreateSwapChain();
+}
+
 std::vector<char> Dominus::readFile(const std::string & fileName)
 {
 	std::cout << "Loading: " << fileName;
@@ -814,7 +856,13 @@ VkExtent2D Dominus::chooseSwapExtent(const VkSurfaceCapabilitiesKHR & capabiliti
 	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
 		return capabilities.currentExtent;
 	else {
-		VkExtent2D actualExtent = { WIDTH, HEIGHT };
+		int width, height;
+		glfwGetWindowSize(gWindow, &width, &height);
+
+		VkExtent2D actualExtent = { 
+			static_cast<uint32_t>(width), 
+			static_cast<uint32_t>(height) 
+		};
 
 		actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
 		actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));

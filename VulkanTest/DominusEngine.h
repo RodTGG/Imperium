@@ -82,20 +82,24 @@ private:
 	void createCommandBuffers();
 	void createSempahores();
 	void drawFrame();
+	void recreateSwapChain();
+	void cleanupSwapChain();
 
 	bool isDeviceSuitable(VkPhysicalDevice aDevice);
 	bool checkValidationLayerSupport();
 	bool checkDeviceExtensionSupport(VkPhysicalDevice aDevice);
 
 	std::vector<const char*> getRequiredExtensions();
-	static std::vector<char> readFile(const std::string& fileName);
 
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availableModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
-	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t locatio, int32_t code, const char* layerPrefix, const char* msg, void* userData);
 	VkResult createDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback);
+
+	static void onWindowResized(GLFWwindow* window, int width, int height);
+	static std::vector<char> readFile(const std::string& fileName);
+	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t locatio, int32_t code, const char* layerPrefix, const char* msg, void* userData);
 };
 
