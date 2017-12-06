@@ -4,9 +4,9 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 #include <GLFW/glfw3.h>
-#include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
+#include <glm/glm.hpp>
 #include <vector>
+#include <array>
 
 class Dominus
 {
@@ -52,6 +52,8 @@ private:
 	VkPipelineLayout gPipelineLayout;
 	VkPipeline gGraphicsPipeline;
 	VkCommandPool commandPool;
+	VkBuffer vertexBuffer;
+	VkDeviceMemory vertexBufferMemory;
 
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
@@ -79,6 +81,7 @@ private:
 	void createRenderPass();
 	void createFramebuffers();
 	void createCommandPool();
+	void createVertexBuffer();
 	void createCommandBuffers();
 	void createSempahores();
 	void drawFrame();
@@ -89,6 +92,8 @@ private:
 	bool checkValidationLayerSupport();
 	bool checkDeviceExtensionSupport(VkPhysicalDevice aDevice);
 
+	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
 	std::vector<const char*> getRequiredExtensions();
 
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
@@ -98,8 +103,8 @@ private:
 
 	VkResult createDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback);
 
+	static void onKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 	static void onWindowResized(GLFWwindow* window, int width, int height);
 	static std::vector<char> readFile(const std::string& fileName);
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t locatio, int32_t code, const char* layerPrefix, const char* msg, void* userData);
 };
-

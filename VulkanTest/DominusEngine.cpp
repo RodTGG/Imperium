@@ -5,6 +5,44 @@
 #include <fstream>
 #include <string>
 
+struct Vertex
+{
+	glm::vec2 pos;
+	glm::vec3 color;
+
+	static VkVertexInputBindingDescription getBindingDescription()
+	{
+		VkVertexInputBindingDescription bindingDescription = {};
+		bindingDescription.binding = 0;
+		bindingDescription.stride = sizeof(Vertex);
+		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+		return bindingDescription;
+	}
+
+	static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
+	{
+		std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
+		attributeDescriptions[0].binding = 0;
+		attributeDescriptions[0].location = 0;
+		attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+		attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+		attributeDescriptions[1].binding = 0;
+		attributeDescriptions[1].location = 1;
+		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[1].offset = offsetof(Vertex, color);
+		return attributeDescriptions;
+	}
+};
+
+const std::vector<Vertex> vertices = {
+	{ { -1.0f, -1.0f },	{ 1.0f, 0.0f, 0.0f } },
+	{ { 1.0f, -1.0f },	{ 0.0f, 1.0f, 0.0f } },
+	{ { -1.0f, 1.0f },	{ 0.0f, 0.0f, 1.0f } },
+	{ { 1.0f, 1.0f },	{ 1.0f, 1.0f, 1.0f } }
+};
+
 Dominus::Dominus()
 {
 	gPhysicalDevice = VK_NULL_HANDLE;
@@ -27,6 +65,7 @@ void Dominus::initVulkan()
 	createGraphicsPipeline();
 	createFramebuffers();
 	createCommandPool();
+	createVertexBuffer();
 	createCommandBuffers();
 	createSempahores();
 }
@@ -189,10 +228,10 @@ void Dominus::createGraphicsPipeline()
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 0;
-	vertexInputInfo.pVertexBindingDescriptions = nullptr;
-	vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexBindingDescriptions = &Vertex::getBindingDescription();
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(Vertex::getAttributeDescriptions().size());
+	vertexInputInfo.pVertexAttributeDescriptions = Vertex::getAttributeDescriptions().data();
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -377,6 +416,36 @@ void Dominus::createCommandPool()
 		throw std::runtime_error("Failed to create command pool!");
 }
 
+void Dominus::createVertexBuffer()
+{
+	VkBufferCreateInfo bufferInfo = {};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = sizeof(vertices[0]) * vertices.size();
+	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	if (vkCreateBuffer(gDevice, &bufferInfo, nullptr, &vertexBuffer) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create vertex buffer!");
+
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(gDevice, vertexBuffer, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	if (vkAllocateMemory(gDevice, &allocInfo, nullptr, &vertexBufferMemory) != VK_SUCCESS)
+		throw std::runtime_error("Failed to allocate vertex buffer memory");
+
+	vkBindBufferMemory(gDevice, vertexBuffer, vertexBufferMemory, 0);
+
+	void* data;
+	vkMapMemory(gDevice, vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+	memcpy(data, vertices.data(), (size_t) bufferInfo.size);
+	vkUnmapMemory(gDevice, vertexBufferMemory);
+}
+
 void Dominus::createCommandBuffers()
 {
 	commandBuffers.resize(gSwapChainFramebuffers.size());
@@ -412,7 +481,12 @@ void Dominus::createCommandBuffers()
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gGraphicsPipeline);
-		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+
+		VkBuffer vertexBuffers[] = { vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+
+		vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 		vkCmdEndRenderPass(commandBuffers[i]);
 
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
@@ -650,8 +724,10 @@ void Dominus::initWindow()
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 	gWindow = glfwCreateWindow(WIDTH, HEIGHT, "VulkanTestWindow", nullptr, nullptr);
+	glfwSetWindowSizeLimits(gWindow, 100, 100, GLFW_DONT_CARE, GLFW_DONT_CARE);
 	glfwSetWindowUserPointer(gWindow, this);
-	glfwSetWindowSizeCallback(gWindow, this->onWindowResized);
+	glfwSetWindowSizeCallback(gWindow, onWindowResized);
+	glfwSetKeyCallback(gWindow, onKeyCallback);
 }
 
 void Dominus::run()
@@ -675,6 +751,8 @@ void Dominus::gameLoop()
 void Dominus::cleanUp()
 {
 	cleanupSwapChain();
+	vkDestroyBuffer(gDevice, vertexBuffer, nullptr);
+	vkFreeMemory(gDevice, vertexBufferMemory, nullptr);
 	vkDestroySemaphore(gDevice, renderFinishedSemaphore, nullptr);
 	vkDestroySemaphore(gDevice, imageAvailableSemaphore, nullptr);
 	vkDestroyCommandPool(gDevice, commandPool, nullptr);
@@ -762,6 +840,20 @@ bool Dominus::checkDeviceExtensionSupport(VkPhysicalDevice aDevice)
 	return requiredExtensions.empty();
 }
 
+uint32_t Dominus::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+{
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(gPhysicalDevice, &memProperties);
+
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) 
+	{
+		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+			return i;
+	}
+
+	throw std::runtime_error("Failed to find suitable memory type!");
+}
+
 std::vector<const char*> Dominus::getRequiredExtensions()
 {
 	unsigned int glfwExtensionCount = 0;
@@ -782,6 +874,14 @@ std::vector<const char*> Dominus::getRequiredExtensions()
 	std::cout << "GLFW Number of extensions: " << glfwExtensionCount << std::endl;
 
 	return extensions;
+}
+
+void Dominus::onKeyCallback(GLFWwindow * window, int key, int scancode, int action, int mods)
+{
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+	{
+		glfwSetWindowShouldClose(window, GLFW_TRUE);
+	}
 }
 
 void Dominus::onWindowResized(GLFWwindow * window, int width, int height)
@@ -859,9 +959,9 @@ VkExtent2D Dominus::chooseSwapExtent(const VkSurfaceCapabilitiesKHR & capabiliti
 		int width, height;
 		glfwGetWindowSize(gWindow, &width, &height);
 
-		VkExtent2D actualExtent = { 
-			static_cast<uint32_t>(width), 
-			static_cast<uint32_t>(height) 
+		VkExtent2D actualExtent = {
+			static_cast<uint32_t>(width),
+			static_cast<uint32_t>(height)
 		};
 
 		actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));

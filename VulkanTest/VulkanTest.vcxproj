@@ -87,12 +87,16 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>C:\Users\Rodri\Documents\Visual Studio 2017\Libraries\glm-0.9.8.5;C:\Users\Rodri\Documents\Visual Studio 2017\Libraries\glm-0.9.8.5\glm;C:\Users\Rodri\Documents\Visual Studio 2017\Libraries\glfw-3.2.1.bin.WIN64\include;C:\Temp\VulkanSDK\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <BrowseInformation>true</BrowseInformation>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>C:\Temp\VulkanSDK\Lib;C:\Users\Rodri\Documents\Visual Studio 2017\Libraries\glfw-3.2.1.bin.WIN64\lib-vc2015;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
+    <Bscmake>
+      <PreserveSbr>true</PreserveSbr>
+    </Bscmake>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
