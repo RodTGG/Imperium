@@ -4,7 +4,6 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
 #include <vector>
 #include <array>
 
@@ -49,11 +48,16 @@ private:
 	VkFormat gSwapChainFormat;
 	VkExtent2D gSwapChainExtent;
 	VkRenderPass gRenderPass;
+	VkDescriptorSetLayout descriptionSetLayout;
 	VkPipelineLayout gPipelineLayout;
 	VkPipeline gGraphicsPipeline;
 	VkCommandPool commandPool;
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemory;
+	VkBuffer indexBuffer;
+	VkDeviceMemory indexBufferMemory;
+	VkBuffer uniformBuffer;
+	VkDeviceMemory uniformBufferMemory;
 
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
@@ -82,11 +86,17 @@ private:
 	void createFramebuffers();
 	void createCommandPool();
 	void createVertexBuffer();
+	void createIndexBuffer();
 	void createCommandBuffers();
 	void createSempahores();
 	void drawFrame();
 	void recreateSwapChain();
 	void cleanupSwapChain();
+	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+	void createDescriptionSetLayout();
+	void createUniformBuffer();
+	void updateUniformBuffer();
 
 	bool isDeviceSuitable(VkPhysicalDevice aDevice);
 	bool checkValidationLayerSupport();
@@ -106,5 +116,6 @@ private:
 	static void onKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 	static void onWindowResized(GLFWwindow* window, int width, int height);
 	static std::vector<char> readFile(const std::string& fileName);
-	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t locatio, int32_t code, const char* layerPrefix, const char* msg, void* userData);
+	static void glfwErrorCallback(int error, const char* description);
+	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData);
 };
