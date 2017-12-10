@@ -83,6 +83,8 @@ void Dominus::initVulkan()
 	createVertexBuffer();
 	createIndexBuffer();
 	createUniformBuffer();
+	createDescriptorPool();
+	createDescriptorSet();
 	createCommandBuffers();
 	createSempahores();
 }
@@ -139,6 +141,7 @@ void Dominus::gameLoop()
 void Dominus::cleanUp()
 {
 	cleanupSwapChain();
+	vkDestroyDescriptorPool(gDevice, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(gDevice, descriptionSetLayout, nullptr);
 	vkDestroyBuffer(gDevice, uniformBuffer, nullptr);
 	vkFreeMemory(gDevice, uniformBufferMemory, nullptr);
@@ -330,7 +333,7 @@ void Dominus::createGraphicsPipeline()
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizer.lineWidth = 1.0f;
 	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer.depthBiasEnable = VK_FALSE;
 	rasterizer.depthBiasConstantFactor = 0.0f;	// Optional
 	rasterizer.depthBiasClamp = 0.0f;			// Optional
@@ -559,6 +562,7 @@ void Dominus::createCommandBuffers()
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
 		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 		vkCmdEndRenderPass(commandBuffers[i]);
@@ -573,6 +577,53 @@ void Dominus::createUniformBuffer()
 	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 	createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffer, uniformBufferMemory);
 
+}
+
+void Dominus::createDescriptorPool() 
+{
+	VkDescriptorPoolSize poolSize = {};
+	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSize.descriptorCount = 1;
+
+	VkDescriptorPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.poolSizeCount = 1;
+	poolInfo.pPoolSizes = &poolSize;
+	poolInfo.maxSets = 1;
+
+	if (vkCreateDescriptorPool(gDevice, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create descriptor pool!");
+}
+
+void Dominus::createDescriptorSet() 
+{
+	VkDescriptorSetLayout layouts[] = { descriptionSetLayout };
+	VkDescriptorSetAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = descriptorPool;
+	allocInfo.descriptorSetCount = 1;
+	allocInfo.pSetLayouts = layouts;
+
+	if (vkAllocateDescriptorSets(gDevice, &allocInfo, &descriptorSet) != VK_SUCCESS)
+		throw std::runtime_error("Failed to allocate descriptor set!");
+
+	VkDescriptorBufferInfo bufferInfo = {};
+	bufferInfo.buffer = uniformBuffer;
+	bufferInfo.offset = 0;
+	bufferInfo.range = sizeof(UniformBufferObject);
+
+	VkWriteDescriptorSet descriptorWrite = {};
+	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrite.dstSet = descriptorSet;
+	descriptorWrite.dstBinding = 0;
+	descriptorWrite.dstArrayElement = 0;
+	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorWrite.descriptorCount = 1;
+	descriptorWrite.pBufferInfo = &bufferInfo;
+	descriptorWrite.pImageInfo = nullptr; // Optional
+	descriptorWrite.pTexelBufferView = nullptr; // Optional
+
+	vkUpdateDescriptorSets(gDevice, 1, &descriptorWrite, 0, nullptr);
 }
 
 void Dominus::createSempahores()
@@ -1093,25 +1144,6 @@ std::vector<const char*> Dominus::getRequiredExtensions()
 	return extensions;
 }
 
-void Dominus::onKeyCallback(GLFWwindow * window, int key, int scancode, int action, int mods)
-{
-	float cameraSpeed = 0.05f;
-
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-	{
-		glfwSetWindowShouldClose(window, GLFW_TRUE);
-	}
-}
-
-void Dominus::onWindowResized(GLFWwindow * window, int width, int height)
-{
-	if (width <= 0 || height <= 0)
-		return;
-
-	Dominus* app = reinterpret_cast<Dominus*>(glfwGetWindowUserPointer(window));
-	app->recreateSwapChain();
-}
-
 std::vector<char> Dominus::readFile(const std::string & fileName)
 {
 	std::cout << "Loading: " << fileName;
@@ -1130,6 +1162,25 @@ std::vector<char> Dominus::readFile(const std::string & fileName)
 	file.close();
 
 	return buffer;
+}
+
+void Dominus::onKeyCallback(GLFWwindow * window, int key, int scancode, int action, int mods)
+{
+	float cameraSpeed = 0.05f;
+
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+	{
+		glfwSetWindowShouldClose(window, GLFW_TRUE);
+	}
+}
+
+void Dominus::onWindowResized(GLFWwindow * window, int width, int height)
+{
+	if (width <= 0 || height <= 0)
+		return;
+
+	Dominus* app = reinterpret_cast<Dominus*>(glfwGetWindowUserPointer(window));
+	app->recreateSwapChain();
 }
 
 void Dominus::glfwErrorCallback(int error, const char * description)

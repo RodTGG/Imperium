@@ -58,6 +58,8 @@ private:
 	VkDeviceMemory indexBufferMemory;
 	VkBuffer uniformBuffer;
 	VkDeviceMemory uniformBufferMemory;
+	VkDescriptorPool descriptorPool;
+	VkDescriptorSet descriptorSet;
 
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
@@ -97,6 +99,8 @@ private:
 	void createDescriptionSetLayout();
 	void createUniformBuffer();
 	void updateUniformBuffer();
+	void createDescriptorPool();
+	void createDescriptorSet();
 
 	bool isDeviceSuitable(VkPhysicalDevice aDevice);
 	bool checkValidationLayerSupport();
