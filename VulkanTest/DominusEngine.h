@@ -2,8 +2,9 @@
 #define GLFW_INCLUDE_VULKAN
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define STB_IMAGE_IMPLEMENTATION
 
-#include <GLFW/glfw3.h>
+#include <GLFW\glfw3.h>
 #include <vector>
 #include <array>
 
@@ -34,7 +35,6 @@ private:
 	int gQPresentFamily = -1;
 
 	GLFWwindow* gWindow;
-
 	VkInstance gInstance;
 	VkDebugReportCallbackEXT gCallback;
 	VkPhysicalDevice gPhysicalDevice;
@@ -95,12 +95,13 @@ private:
 	void recreateSwapChain();
 	void cleanupSwapChain();
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer	, VkDeviceSize size);
 	void createDescriptionSetLayout();
 	void createUniformBuffer();
 	void updateUniformBuffer();
 	void createDescriptorPool();
 	void createDescriptorSet();
+	void createTextureImage();
 
 	bool isDeviceSuitable(VkPhysicalDevice aDevice);
 	bool checkValidationLayerSupport();
@@ -114,7 +115,6 @@ private:
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availableModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
-
 	VkResult createDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback);
 
 	static void onKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);

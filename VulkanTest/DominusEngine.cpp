@@ -4,9 +4,10 @@
 #include <algorithm>
 #include <fstream>
 #include <string>
+#include <chrono>
 #include <glm/glm.hpp>
 #include <glm\gtc\matrix_transform.hpp>
-#include <chrono>
+#include "stb_image.h"
 
 struct Vertex
 {
@@ -50,7 +51,7 @@ const std::vector<uint16_t> indices = {
 	0,1,2,2,3,0
 };
 
-struct UniformBufferObject 
+struct UniformBufferObject
 {
 	glm::mat4 model;
 	glm::mat4 view;
@@ -80,6 +81,7 @@ void Dominus::initVulkan()
 	createGraphicsPipeline();
 	createFramebuffers();
 	createCommandPool();
+	createTextureImage();
 	createVertexBuffer();
 	createIndexBuffer();
 	createUniformBuffer();
@@ -129,6 +131,8 @@ void Dominus::run()
 
 void Dominus::gameLoop()
 {
+	std::cout << "Entering game loop" << std::endl;
+
 	while (!glfwWindowShouldClose(gWindow)) {
 		glfwPollEvents();
 		updateUniformBuffer();
@@ -140,6 +144,8 @@ void Dominus::gameLoop()
 
 void Dominus::cleanUp()
 {
+	std::cout << "Cleaning up" << std::endl;
+
 	cleanupSwapChain();
 	vkDestroyDescriptorPool(gDevice, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(gDevice, descriptionSetLayout, nullptr);
@@ -162,6 +168,8 @@ void Dominus::cleanUp()
 
 void Dominus::createVKInstance()
 {
+	std::cout << "Creating Vulkan instance" << std::endl;
+
 	if (enableValidationLayers && !checkValidationLayerSupport()) {
 		throw std::runtime_error("validation layers requested, but not available!");
 	}
@@ -196,6 +204,8 @@ void Dominus::createVKInstance()
 
 void Dominus::createSwapChain()
 {
+	std::cout << "Creating swapchain" << std::endl;
+
 	querySwapChainSupport(gPhysicalDevice);
 
 	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(gFormats);
@@ -204,8 +214,13 @@ void Dominus::createSwapChain()
 
 	uint32_t imageCount = gCapabilities.minImageCount + 1;
 
+	std::cout << "Swapchain image count: " << imageCount << std::endl;
+
 	if (gCapabilities.maxImageCount > 0 && imageCount > gCapabilities.maxImageCount)
+	{
+		std::cout << "Setting swapchain image limit to max: " << gCapabilities.maxImageCount << std::endl;
 		imageCount = gCapabilities.maxImageCount;
+	}
 
 	VkSwapchainCreateInfoKHR createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -220,13 +235,17 @@ void Dominus::createSwapChain()
 	uint32_t queueFamilyIndices[] = { static_cast<uint32_t>(gQGraphicsFamily),  static_cast<uint32_t>(gQPresentFamily) };
 
 
-	if (gQGraphicsFamily != gQPresentFamily) {
+	if (gQGraphicsFamily != gQPresentFamily)
+	{
 		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		createInfo.queueFamilyIndexCount = 2;
 		createInfo.pQueueFamilyIndices = queueFamilyIndices;
 	}
-	else {
+	else
+	{
 		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		createInfo.queueFamilyIndexCount = 0;		// Optional
+		createInfo.pQueueFamilyIndices = nullptr;	// Optional
 	}
 
 	createInfo.preTransform = gCapabilities.currentTransform;
@@ -249,6 +268,8 @@ void Dominus::createSwapChain()
 void Dominus::createImageViews()
 {
 	swapChainImageViews.resize(swapChainImages.size());
+
+	std::cout << "Creating image views (" << swapChainImageViews.size() << ")" << std::endl;
 
 	for (size_t i = 0; i < swapChainImages.size(); i++)
 	{
@@ -275,11 +296,15 @@ void Dominus::createImageViews()
 
 void Dominus::createGraphicsPipeline()
 {
+	std::cout << "Loading vert.spv" << std::endl;
 	auto vertShaderCode = readFile("shaders/vert.spv");
+	std::cout << "Loading frag.spv" << std::endl;
 	auto fragShaderCode = readFile("shaders/frag.spv");
 
 	VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 	VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+	std::cout << "Creating graphics pipeline" << std::endl;
 
 	VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
 	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -411,6 +436,8 @@ void Dominus::createGraphicsPipeline()
 
 void Dominus::createRenderPass()
 {
+	std::cout << "Creating render pass" << std::endl;
+
 	VkAttachmentDescription colorAttachment = {};
 	colorAttachment.format = gSwapChainFormat;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -455,6 +482,9 @@ void Dominus::createFramebuffers()
 {
 	gSwapChainFramebuffers.resize(swapChainImageViews.size());
 
+
+	std::cout << "Creating frame buffers (" << gSwapChainFramebuffers.size() << ")" << std::endl;
+
 	for (size_t i = 0; i < swapChainImageViews.size(); i++) {
 		VkImageView attachments[] = { swapChainImageViews[i] };
 
@@ -474,6 +504,8 @@ void Dominus::createFramebuffers()
 
 void Dominus::createCommandPool()
 {
+	std::cout << "Creating command pool" << std::endl;
+
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = gQGraphicsFamily;
@@ -488,12 +520,17 @@ void Dominus::createVertexBuffer()
 	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 	VkBuffer staginBuffer;
 	VkDeviceMemory staginBufferMemory;
+
+	std::cout << "Creating staging buffer" << std::endl;
+
 	createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staginBuffer, staginBufferMemory);
 
 	void* data;
 	vkMapMemory(gDevice, staginBufferMemory, 0, bufferSize, 0, &data);
 	memcpy(data, vertices.data(), (size_t)bufferSize);
 	vkUnmapMemory(gDevice, staginBufferMemory);
+
+	std::cout << "Creating vertex buffer" << std::endl;
 
 	createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
 	copyBuffer(staginBuffer, vertexBuffer, bufferSize);
@@ -508,12 +545,16 @@ void Dominus::createIndexBuffer()
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 
+	std::cout << "Creating staging buffer" << std::endl;
+
 	createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
 	void* data;
 	vkMapMemory(gDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
 	memcpy(data, indices.data(), bufferSize);
 	vkUnmapMemory(gDevice, stagingBufferMemory);
+
+	std::cout << "Creating index buffer" << std::endl;
 
 	createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
 	copyBuffer(stagingBuffer, indexBuffer, bufferSize);
@@ -525,6 +566,8 @@ void Dominus::createIndexBuffer()
 void Dominus::createCommandBuffers()
 {
 	commandBuffers.resize(gSwapChainFramebuffers.size());
+
+	std::cout << "Creating command buffers (" << gSwapChainFramebuffers.size() << ")" << std::endl;
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -572,15 +615,31 @@ void Dominus::createCommandBuffers()
 	}
 }
 
-void Dominus::createUniformBuffer() 
+void Dominus::createUniformBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+	std::cout << "Creating uniform buffer" << std::endl;
+
 	createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffer, uniformBufferMemory);
 
 }
 
-void Dominus::createDescriptorPool() 
+void Dominus::createSempahores()
 {
+	std::cout << "Creating semaphores" << std::endl;
+
+	VkSemaphoreCreateInfo semaphoreInfo = {};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	if (vkCreateSemaphore(gDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS || vkCreateSemaphore(gDevice, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create semaphores!");
+}
+
+void Dominus::createDescriptorPool()
+{
+	std::cout << "Creating descriptor pool" << std::endl;
+
 	VkDescriptorPoolSize poolSize = {};
 	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSize.descriptorCount = 1;
@@ -595,8 +654,30 @@ void Dominus::createDescriptorPool()
 		throw std::runtime_error("Failed to create descriptor pool!");
 }
 
-void Dominus::createDescriptorSet() 
+void Dominus::createDescriptionSetLayout()
 {
+	std::cout << "Creating descriptor set layout" << std::endl;
+
+	VkDescriptorSetLayoutBinding uboLayoutBinding = {};
+	uboLayoutBinding.binding = 0;
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboLayoutBinding.descriptorCount = 1;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	uboLayoutBinding.pImmutableSamplers = nullptr;	// Optional
+
+	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = 1;
+	layoutInfo.pBindings = &uboLayoutBinding;
+
+	if (vkCreateDescriptorSetLayout(gDevice, &layoutInfo, nullptr, &descriptionSetLayout) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create descriptor set layout!");
+}
+
+void Dominus::createDescriptorSet()
+{
+	std::cout << "Creating descriptor set" << std::endl;
+
 	VkDescriptorSetLayout layouts[] = { descriptionSetLayout };
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -626,39 +707,14 @@ void Dominus::createDescriptorSet()
 	vkUpdateDescriptorSets(gDevice, 1, &descriptorWrite, 0, nullptr);
 }
 
-void Dominus::createSempahores()
-{
-	VkSemaphoreCreateInfo semaphoreInfo = {};
-	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-	if (vkCreateSemaphore(gDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS || vkCreateSemaphore(gDevice, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create semaphores!");
-}
-
-void Dominus::createDescriptionSetLayout()
-{
-	VkDescriptorSetLayoutBinding uboLayoutBinding = {};
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	uboLayoutBinding.pImmutableSamplers = nullptr;	// Optional
-
-	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = 1;
-	layoutInfo.pBindings = &uboLayoutBinding;
-
-	if (vkCreateDescriptorSetLayout(gDevice, &layoutInfo, nullptr, &descriptionSetLayout) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create descriptor set layout!");
-}
-
 void Dominus::createLogicalDevice()
 {
 	float queuePriority = 1.0f;
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 	std::set<int> uniqueQueueFamilies = { gQGraphicsFamily, gQPresentFamily };
+
+	std::cout << "Creating logical device" << std::endl;
 
 	for (int queueFamily : uniqueQueueFamilies)
 	{
@@ -693,18 +749,31 @@ void Dominus::createLogicalDevice()
 	if (vkCreateDevice(gPhysicalDevice, &createInfo, nullptr, &gDevice) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create logical device!");
 
+	std::cout << "Getting queue handles" << std::endl;
+
 	vkGetDeviceQueue(gDevice, gQGraphicsFamily, 0, &gGraphicsQueue);
 	vkGetDeviceQueue(gDevice, gQPresentFamily, 0, &gPresentQueue);
 }
 
 void Dominus::createSurface()
 {
+	std::cout << "Creating surface" << std::endl;
+
 	if (glfwCreateWindowSurface(gInstance, gWindow, nullptr, &gSurface) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create window surface!");
 }
 
+void Dominus::createTextureImage() 
+{
+	
+}
+
 void Dominus::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer & buffer, VkDeviceMemory & bufferMemory)
 {
+	std::cout << "Creating buffer:" << std::endl;
+	std::cout << "\tSize: " << size << " bytes" << std::endl;
+	std::cout << "\tUsage: " << usage << std::endl;
+
 	VkBufferCreateInfo bufferInfo = {};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferInfo.size = size;
@@ -722,11 +791,30 @@ void Dominus::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemory
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
+	std::cout << "\tAllocating memory" << std::endl;
+
 	if (vkAllocateMemory(gDevice, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate memory!");
 
 	vkBindBufferMemory(gDevice, buffer, bufferMemory, 0);
 
+}
+
+VkShaderModule Dominus::createShaderModule(const std::vector<char>& code)
+{
+	VkShaderModule shaderModule;
+
+	VkShaderModuleCreateInfo createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	createInfo.codeSize = code.size();
+	createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+	std::cout << "Creating shader module" << std::endl;
+
+	if (vkCreateShaderModule(gDevice, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create shader module!");
+
+	return shaderModule;
 }
 
 void Dominus::drawFrame()
@@ -857,7 +945,10 @@ void Dominus::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize si
 
 void Dominus::setupDebugCallback()
 {
-	if (!enableValidationLayers) return;
+	if (!enableValidationLayers)
+		return;
+
+	std::cout << "Setting up Vulkan debug callback" << std::endl;
 
 	VkDebugReportCallbackCreateInfoEXT createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
@@ -871,6 +962,7 @@ void Dominus::setupDebugCallback()
 void Dominus::pickPyshicalDevice()
 {
 	uint32_t deviceCount = 0;
+	VkPhysicalDeviceProperties properties;
 
 	vkEnumeratePhysicalDevices(gInstance, &deviceCount, nullptr);
 
@@ -880,9 +972,19 @@ void Dominus::pickPyshicalDevice()
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(gInstance, &deviceCount, devices.data());
 
+	std::cout << "Available devices (" << deviceCount << ") :" << std::endl;
+
 	for (const auto& device : devices)
 	{
-		if (isDeviceSuitable(device)) {
+		vkGetPhysicalDeviceProperties(device, &properties);
+		std::cout << "\tId: " << properties.deviceID << std::endl;
+		std::cout << "\tName: " << properties.deviceName << std::endl;
+		std::cout << "\tVendor: " << properties.vendorID << std::endl;
+		std::cout << "\tDriver: " << properties.driverVersion << std::endl;
+
+		if (isDeviceSuitable(device))
+		{
+			std::cout << "Found suitable device: " << properties.deviceID << std::endl;
 			gPhysicalDevice = device;
 			break;
 		}
@@ -892,7 +994,7 @@ void Dominus::pickPyshicalDevice()
 		throw std::runtime_error("Failed to find a suitable GPU");
 }
 
-void Dominus::updateUniformBuffer() 
+void Dominus::updateUniformBuffer()
 {
 	static auto startTime = std::chrono::high_resolution_clock::now();
 	auto currentTime = std::chrono::high_resolution_clock::now();
@@ -902,7 +1004,7 @@ void Dominus::updateUniformBuffer()
 	UniformBufferObject ubo = {};
 	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 10.0f);
+	ubo.proj = glm::perspective(time * glm::radians(45.0f), gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 10.0f);
 	ubo.proj[1][1] *= -1;
 
 	void* data;
@@ -950,20 +1052,35 @@ void Dominus::findQueueFamilies(VkPhysicalDevice aDevice)
 	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(aDevice, &queueFamilyCount, queueFamilies.data());
 
+	std::cout << "Queue Families (" << queueFamilyCount << ") :" << std::endl;
+
 	int i = 0;
 	for (const auto& queueFamily : queueFamilies)
 	{
-		if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-			gQGraphicsFamily = i;
-
 		VkBool32 presentSupport = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(aDevice, i, gSurface, &presentSupport);
 
-		if (queueFamily.queueCount > 0 && presentSupport)
-			gQPresentFamily = i;
+		std::cout << "\tQueues: " << queueFamily.queueCount << std::endl;
+		std::cout << "\tFlags: " << queueFamily.queueFlags << std::endl;
 
-		if (gQGraphicsFamily >= 0 && gQPresentFamily >= 0)
-			break;
+		if (queueFamily.queueCount != 0)
+		{
+			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+				gQGraphicsFamily = i;
+
+			std::cout << "\tChecking for present support" << std::endl;
+
+			vkGetPhysicalDeviceSurfaceSupportKHR(aDevice, i, gSurface, &presentSupport);
+
+			if (presentSupport)
+				gQPresentFamily = i;
+
+			if (gQGraphicsFamily >= 0 && gQPresentFamily >= 0) {
+				std::cout << "Found queues: " << std::endl;
+				std::cout << "\tGraphics: " << gQGraphicsFamily << std::endl;
+				std::cout << "\tPresent support [" << gQPresentFamily << "] : " << presentSupport << std::endl;
+				break;
+			}
+		}
 
 		i++;
 	}
@@ -974,15 +1091,16 @@ bool Dominus::checkDeviceExtensionSupport(VkPhysicalDevice aDevice)
 	uint32_t extensionCount = 0;
 
 	vkEnumerateDeviceExtensionProperties(aDevice, nullptr, &extensionCount, nullptr);
-
 	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
 
 	vkEnumerateDeviceExtensionProperties(aDevice, nullptr, &extensionCount, availableExtensions.data());
-
 	std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+
+	std::cout << "Device extensions (" << extensionCount << ") :" << std::endl;
 
 	for (const auto& extension : availableExtensions)
 	{
+		std::cout << "\t" << extension.extensionName << std::endl;
 		requiredExtensions.erase(extension.extensionName);
 	}
 
@@ -994,73 +1112,88 @@ void Dominus::querySwapChainSupport(VkPhysicalDevice aDevice)
 	uint32_t formatCount = 0;
 	uint32_t presentModeCount = 0;
 
+	std::cout << "Checking capabilities and formats" << std::endl;
+
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(aDevice, gSurface, &gCapabilities);
 	vkGetPhysicalDeviceSurfaceFormatsKHR(aDevice, gSurface, &formatCount, nullptr);
+
+	std::cout << "Supported Formats (" << formatCount << ")" << std::endl;
 
 	if (formatCount != 0) {
 		gFormats.resize(formatCount);
 		vkGetPhysicalDeviceSurfaceFormatsKHR(aDevice, gSurface, &formatCount, gFormats.data());
+
+		for (auto format : gFormats)
+			std::cout << "\t" << format.format << std::endl;
 	}
 
 	vkGetPhysicalDeviceSurfacePresentModesKHR(aDevice, gSurface, &presentModeCount, nullptr);
 
+	std::cout << "Supported Present modes (" << presentModeCount << ")" << std::endl;
+
 	if (presentModeCount != 0) {
 		gPresentModes.resize(presentModeCount);
 		vkGetPhysicalDeviceSurfacePresentModesKHR(aDevice, gSurface, &presentModeCount, gPresentModes.data());
+
+		for (auto mode : gPresentModes)
+			std::cout << "\t" << mode << std::endl;
 	}
-}
-
-void Dominus::destroyDebugReportCallbackEXT(VkInstance aInstance, VkDebugReportCallbackEXT aCallback, const VkAllocationCallbacks * aAllocator)
-{
-	auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(aInstance, "vkDestroyDebugReportCallbackEXT");
-
-	if (func != nullptr)
-		func(aInstance, aCallback, aAllocator);
 }
 
 bool Dominus::isDeviceSuitable(VkPhysicalDevice aDevice)
 {
+	std::cout << "Checking if device is suitable" << std::endl;
+
 	findQueueFamilies(aDevice);
 
 	if (gQGraphicsFamily == -1 && gQPresentFamily == -1)
+	{
+		std::cout << "Failed to find Graphics family or Present family index" << std::endl;
 		return false;
+	}
 
 	if (!checkDeviceExtensionSupport(aDevice))
+	{
+		std::cout << "No extensions supported" << std::endl;
 		return false;
+	}
 
 	querySwapChainSupport(aDevice);
 
 	if (gFormats.empty() && gPresentModes.empty())
+	{
+		std::cout << "No formats or present modes available" << std::endl;
 		return false;
+	}
+
+	std::cout << "Device is suitable" << std::endl;
 
 	return true;
 }
 
-VkShaderModule Dominus::createShaderModule(const std::vector<char>& code)
-{
-	VkShaderModule shaderModule;
-	VkShaderModuleCreateInfo createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	createInfo.codeSize = code.size();
-	createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-
-	if (vkCreateShaderModule(gDevice, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create shader module!");
-
-	return shaderModule;
-}
-
 VkSurfaceFormatKHR Dominus::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
+	std::cout << "Picking swapchain format" << std::endl;
+
 	if (availableFormats.size() == 1 && availableFormats[0].format == VK_FORMAT_UNDEFINED)
+	{
+		std::cout << "No prefered format" << std::endl;
 		return { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+	}
 
 	for (const auto& format : availableFormats)
 	{
 		if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+		{
+			std::cout << "Found specified formats:" << std::endl;
+			std::cout << "\t" << VK_FORMAT_B8G8R8A8_UNORM << std::endl;
+			std::cout << "\t" << VK_COLOR_SPACE_SRGB_NONLINEAR_KHR << std::endl;
 			return format;
-
+		}
 	}
+
+	std::cout << "Failed to get specific format returning first format: " << std::endl;
+	std::cout << availableFormats[0].format << std::endl;
 
 	return availableFormats[0];
 }
@@ -1090,13 +1223,23 @@ VkPresentModeKHR Dominus::chooseSwapPresentMode(const std::vector<VkPresentModeK
 
 VkExtent2D Dominus::chooseSwapExtent(const VkSurfaceCapabilitiesKHR & capabilities)
 {
+	std::cout << "Choosing swapchain extent" << std::endl;
+
 	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+	{
+		std::cout << "Matching window resolution" << std::endl;
 		return capabilities.currentExtent;
-	else {
+	}
+	else
+	{
 		int width, height;
+
+		std::cout << "No preferred resolution checking min and max based on capabilities" << std::endl;
+
 		glfwGetWindowSize(gWindow, &width, &height);
 
-		VkExtent2D actualExtent = {
+		VkExtent2D actualExtent =
+		{
 			static_cast<uint32_t>(width),
 			static_cast<uint32_t>(height)
 		};
@@ -1110,6 +1253,8 @@ VkExtent2D Dominus::chooseSwapExtent(const VkSurfaceCapabilitiesKHR & capabiliti
 
 uint32_t Dominus::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
 {
+	std::cout << "Finding memory type: " << typeFilter << std::endl;
+
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(gPhysicalDevice, &memProperties);
 
@@ -1126,27 +1271,29 @@ std::vector<const char*> Dominus::getRequiredExtensions()
 {
 	unsigned int glfwExtensionCount = 0;
 	const char** glfwExtensions;
-
 	std::vector<const char*> extensions;
+
+	std::cout << "Retrieving available GLFW Vulkan extensions" << std::endl;
 
 	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
+	std::cout << "Available GLFW extensions (" << glfwExtensionCount << ") :" << std::endl;
+
 	for (unsigned int i = 0; i < glfwExtensionCount; i++)
 	{
+		std::cout << "\t" << glfwExtensions[i] << std::endl;
 		extensions.push_back(glfwExtensions[i]);
 	}
 
 	if (enableValidationLayers)
 		extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 
-	std::cout << "GLFW Number of extensions: " << glfwExtensionCount << std::endl;
-
 	return extensions;
 }
 
 std::vector<char> Dominus::readFile(const std::string & fileName)
 {
-	std::cout << "Loading: " << fileName;
+	std::cout << "Reading: " << fileName;
 	std::ifstream file(fileName, std::ios::ate | std::ios::binary);
 
 	if (!file.is_open())
@@ -1166,7 +1313,9 @@ std::vector<char> Dominus::readFile(const std::string & fileName)
 
 void Dominus::onKeyCallback(GLFWwindow * window, int key, int scancode, int action, int mods)
 {
-	float cameraSpeed = 0.05f;
+#ifdef _DEBUG
+	std::cout << "Input detected: " << (char)key << " - " << action << std::endl;
+#endif
 
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 	{
@@ -1176,6 +1325,10 @@ void Dominus::onKeyCallback(GLFWwindow * window, int key, int scancode, int acti
 
 void Dominus::onWindowResized(GLFWwindow * window, int width, int height)
 {
+	std::cout << "Window resize detected" << std::endl;
+	std::cout << "\tWidth: " << width << std::endl;
+	std::cout << "\tHeight: " << height << std::endl;
+
 	if (width <= 0 || height <= 0)
 		return;
 
@@ -1188,8 +1341,20 @@ void Dominus::glfwErrorCallback(int error, const char * description)
 	puts(description);
 }
 
+void Dominus::destroyDebugReportCallbackEXT(VkInstance aInstance, VkDebugReportCallbackEXT aCallback, const VkAllocationCallbacks * aAllocator)
+{
+	std::cout << "destroying vulkan debug callback function" << std::endl;
+
+	auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(aInstance, "vkDestroyDebugReportCallbackEXT");
+
+	if (func != nullptr)
+		func(aInstance, aCallback, aAllocator);
+}
+
 VkResult Dominus::createDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback)
 {
+	std::cout << "Creating vulkan debug callback function" << std::endl;
+
 	auto func = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
 
 	if (func != nullptr)
@@ -1200,7 +1365,7 @@ VkResult Dominus::createDebugReportCallbackEXT(VkInstance instance, const VkDebu
 
 VKAPI_ATTR VkBool32 VKAPI_CALL Dominus::debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char * layerPrefix, const char * msg, void * userData)
 {
-	std::cerr << "Error : " << code  << " at " << location << " - validation layer: " << msg << std::endl;
+	std::cerr << "Error : " << code << " at " << location << " - validation layer: " << msg << std::endl;
 
 	return VK_FALSE;
 }
