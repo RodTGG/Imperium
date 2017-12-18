@@ -7,6 +7,7 @@
 #include <GLFW\glfw3.h>
 #include <vector>
 #include <array>
+#include <glm/glm.hpp>
 
 class Dominus
 {
@@ -66,6 +67,10 @@ private:
 	VkImageView textureImageView;
 	VkSampler textureSampler;
 
+	VkImage depthImage;
+	VkDeviceMemory depthImageMemory;
+	VkImageView depthImageView;
+
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
 
@@ -106,6 +111,7 @@ private:
 	void createDescriptorPool();
 	void createDescriptorSet();
 	void createTextureImage();
+	void createDepthResources();
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory);
 	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
@@ -117,13 +123,15 @@ private:
 	bool isDeviceSuitable(VkPhysicalDevice aDevice);
 	bool checkValidationLayerSupport();
 	bool checkDeviceExtensionSupport(VkPhysicalDevice aDevice);
-
+	bool hasStencilComponent(VkFormat format);
 
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 	std::vector<const char*> getRequiredExtensions();
 
-	VkImageView  createImageView(VkImage image, VkFormat format);
+	VkFormat findDepthFormat();
+	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+	VkImageView  createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 	VkCommandBuffer beginSingleTimeCommands();
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availableModes);
