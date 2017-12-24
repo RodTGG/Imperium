@@ -3,72 +3,13 @@
 #include <set>
 #include <algorithm>
 #include <fstream>
-#include <string>
 #include <chrono>
-#include <glm\gtc\matrix_transform.hpp>
+#include "gtc\matrix_transform.hpp"
 #include "stb_image.h"
+#include <unordered_map>
 
-struct Vertex
-{
-	glm::vec3 pos;
-	glm::vec3 color;
-	glm::vec2 texCoord;
-
-	static VkVertexInputBindingDescription getBindingDescription()
-	{
-		VkVertexInputBindingDescription bindingDescription = {};
-		bindingDescription.binding = 0;
-		bindingDescription.stride = sizeof(Vertex);
-		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-		return bindingDescription;
-	}
-
-	static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions()
-	{
-		std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
-		attributeDescriptions[0].binding = 0;
-		attributeDescriptions[0].location = 0;
-		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-		attributeDescriptions[1].binding = 0;
-		attributeDescriptions[1].location = 1;
-		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-		attributeDescriptions[2].binding = 0;
-		attributeDescriptions[2].location = 2;
-		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-		attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-		return attributeDescriptions;
-	}
-};
-
-const std::vector<Vertex> vertices = {
-	{ { -0.5f, -0.5f, 0.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
-	{ { 0.5f, -0.5f, 0.0f },{ 0.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
-	{ { 0.5f, 0.5f, 0.0f },{ 0.0f, 0.0f, 1.0f },{ 1.0f, 1.0f } },
-	{ { -0.5f, 0.5f, 0.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } },
-
-	{ {-0.5f, -0.5f, -0.5f},{ 1.0f, 0.0f, 0.0f },{ 0.0f, 0.0f }},
-	{ { 0.5f, -0.5f, -0.5f },{ 0.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
-	{ { 0.5f, 0.5f, -0.5f },{ 0.0f, 0.0f, 1.0f },{ 1.0f, 1.0f } },
-	{ { -0.5f, 0.5f, -0.5f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } }
-};
-
-const std::vector<uint16_t> indices = {
-	0,1,2,2,3,0,
-	4,5,6,6,7,4
-};
-
-struct UniformBufferObject
-{
-	glm::mat4 model;
-	glm::mat4 view;
-	glm::mat4 proj;
-};
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
 
 Dominus::Dominus()
 {
@@ -77,6 +18,7 @@ Dominus::Dominus()
 
 Dominus::~Dominus()
 {
+	cleanUp();
 }
 
 void Dominus::initVulkan()
@@ -97,6 +39,7 @@ void Dominus::initVulkan()
 	createTextureImage();
 	createTextureImageView();
 	createTextureSampler();
+	loadModel();
 	createVertexBuffer();
 	createIndexBuffer();
 	createUniformBuffer();
@@ -121,7 +64,8 @@ void Dominus::initWindow()
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-	/*GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+	/* Fullscreen
+	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 	const GLFWvidmode* mode = glfwGetVideoMode(monitor);
 	glfwWindowHint(GLFW_RED_BITS, mode->redBits);
 	glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
@@ -141,7 +85,7 @@ void Dominus::run()
 	initWindow();
 	initVulkan();
 	gameLoop();
-	cleanUp();
+	//cleanUp();
 }
 
 void Dominus::gameLoop()
@@ -320,6 +264,94 @@ void Dominus::createTextureSampler()
 		throw std::runtime_error("Failed to create texture sampler!");
 }
 
+void Dominus::loadModel()
+{
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string err;
+
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, MODEL.c_str()))
+		throw std::runtime_error(err);
+
+	//std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
+
+	for (const auto& shape : shapes) 
+	{
+		for (const auto& index : shape.mesh.indices) 
+		{
+			Vertex vertex = {};
+
+			vertex.pos = {
+				attrib.vertices[3 * index.vertex_index + 0],
+				attrib.vertices[3 * index.vertex_index + 1],
+				attrib.vertices[3 * index.vertex_index + 2]
+			};
+
+			vertex.texCoord = {
+				attrib.texcoords[2 * index.texcoord_index + 0],
+				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+			};
+
+			vertex.color = { 
+				1.0f, 1.0f, 1.0f 
+			};
+
+			/*if (uniqueVertices.count(vertex) == 0)
+			{
+				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+				vertices.push_back(vertex);
+			}*/	
+
+			vertices.push_back(vertex);
+			//indices.push_back(static_cast<uint32_t>(uniqueVertices.size()));
+			
+			indices.push_back(static_cast<uint32_t>(indices.size()));
+		}
+	}
+}
+
+void Dominus::updateGraphicsPiepline()
+{
+	for (size_t i = 0; i < commandBuffers.size(); i++)
+	{
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		beginInfo.pInheritanceInfo = nullptr;		// Optional.
+
+		vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
+
+		std::array<VkClearValue, 2> clearValues = {};
+		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		clearValues[1].depthStencil = { 1.0f, 0 };
+
+		VkRenderPassBeginInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = gRenderPass;
+		renderPassInfo.framebuffer = gSwapChainFramebuffers[i];
+		renderPassInfo.renderArea.offset = { 0,0 };
+		renderPassInfo.renderArea.extent = gSwapChainExtent;
+		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassInfo.pClearValues = clearValues.data();
+
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gGraphicsPipeline2);
+
+		VkBuffer vertexBuffers[] = { vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+		vkCmdEndRenderPass(commandBuffers[i]);
+
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to record command buffer!");
+	}
+}
+
 void Dominus::createGraphicsPipeline()
 {
 	std::cout << "Loading vert.spv" << std::endl;
@@ -470,6 +502,11 @@ void Dominus::createGraphicsPipeline()
 	pipelineInfo.pDepthStencilState = &depthStencil;
 
 	if (vkCreateGraphicsPipelines(gDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &gGraphicsPipeline) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create graphics pipeline!");
+
+	rasterizer.polygonMode = VK_POLYGON_MODE_POINT;
+
+	if (vkCreateGraphicsPipelines(gDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &gGraphicsPipeline2) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
 
 	vkDestroyShaderModule(gDevice, fragShaderModule, nullptr);
@@ -666,7 +703,7 @@ void Dominus::createCommandBuffers()
 		VkBuffer vertexBuffers[] = { vertexBuffer };
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
 		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
@@ -685,6 +722,15 @@ void Dominus::createUniformBuffer()
 
 	createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffer, uniformBufferMemory);
 
+	/*ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.proj = glm::perspective(glm::radians(45.0f), gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 10.0f);
+	ubo.proj[1][1] *= -1;*/
+
+	ubo.model = glm::mat4(1.0f);
+	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.proj = glm::perspective(glm::radians(45.0f), gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 10.0f);
+	ubo.proj[1][1] *= -1;
 }
 
 void Dominus::createSempahores()
@@ -855,7 +901,7 @@ void Dominus::createTextureImage()
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 
-	stbi_uc* pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	stbi_uc* pixels = stbi_load(TEXTURE.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 	VkDeviceSize imageSize = texWidth * texHeight * 4;
 
 	std::cout << "Loading texture image" << std::endl;
@@ -887,6 +933,8 @@ void Dominus::createTextureImage()
 
 void Dominus::createDepthResources()
 {
+	std::cout << "Creating depth resources" << std::endl;
+
 	VkFormat depthFormat = findDepthFormat();
 
 	createImage(gSwapChainExtent.width, gSwapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
@@ -1038,6 +1086,8 @@ void Dominus::drawFrame()
 
 void Dominus::recreateSwapChain()
 {
+	std::cout << "Recreating swapchain" << std::endl;
+
 	vkDeviceWaitIdle(gDevice);
 
 	cleanupSwapChain();
@@ -1052,6 +1102,8 @@ void Dominus::recreateSwapChain()
 
 void Dominus::cleanupSwapChain()
 {
+	std::cout << "Cleaning up swap chain" << std::endl;
+
 	vkDestroyImageView(gDevice, depthImageView, nullptr);
 	vkDestroyImage(gDevice, depthImage, nullptr);
 	vkFreeMemory(gDevice, depthImageMemory, nullptr);
@@ -1151,13 +1203,9 @@ void Dominus::updateUniformBuffer()
 	static auto startTime = std::chrono::high_resolution_clock::now();
 	auto currentTime = std::chrono::high_resolution_clock::now();
 
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+	delta = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-	UniformBufferObject ubo = {};
-	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 10.0f);
-	ubo.proj[1][1] *= -1;
+	//ubo.model = glm::rotate(glm::mat4(1.0f), delta * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
 	void* data;
 	vkMapMemory(gDevice, uniformBufferMemory, 0, sizeof(ubo), 0, &data);
@@ -1469,6 +1517,8 @@ void Dominus::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, 
 
 VkFormat Dominus::findDepthFormat()
 {
+	std::cout << "Finding depth format" << std::endl;
+
 	std::vector<VkFormat> formats = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
 
 	return findSupportedFormat(formats, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
@@ -1482,6 +1532,7 @@ VkFormat Dominus::findSupportedFormat(const std::vector<VkFormat>& candidates, V
 	{
 		VkFormatProperties props;
 		vkGetPhysicalDeviceFormatProperties(gPhysicalDevice, format, &props);
+
 
 		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
 			return format;
@@ -1657,18 +1708,60 @@ std::vector<char> Dominus::readFile(const std::string & fileName)
 
 void Dominus::onKeyCallback(GLFWwindow * window, int key, int scancode, int action, int mods)
 {
+	Dominus* app = reinterpret_cast<Dominus*>(glfwGetWindowUserPointer(window));
+	float speed = 1.0f;
+
 #ifdef _DEBUG
 	std::cout << "Input detected: " << (char)key << " - " << action << std::endl;
 #endif
 
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+	if (key == GLFW_KEY_ESCAPE && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
 	}
-	else if (key == GLFW_KEY_D && action == GLFW_PRESS)
+	else if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		/*Dominus* app = reinterpret_cast<Dominus*>(glfwGetWindowUserPointer(window));
-		app->testUBO();*/
+		app->ubo.model = glm::translate(app->ubo.model, glm::vec3(0.0f, speed, 0.0f));
+	}
+	else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		app->ubo.model = glm::translate(app->ubo.model, glm::vec3(-speed, 0.0f, 0.0f));
+	}
+	else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		app->ubo.model = glm::translate(app->ubo.model, glm::vec3(0.0f, -speed, 0.0f));
+	}
+	else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		app->ubo.model = glm::translate(app->ubo.model, glm::vec3(speed, 0.0f, 0.0f));
+	}
+	else if (key == GLFW_KEY_Q && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		app->ubo.model = glm::translate(app->ubo.model, glm::vec3(0.0f, 0.0f, speed));
+	}
+	else if (key == GLFW_KEY_E && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		app->ubo.model = glm::translate(app->ubo.model, glm::vec3(0.0f, 0.0f, -speed));
+	}
+	else if (key == GLFW_KEY_UP && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		app->ubo.view = glm::translate(app->ubo.view, glm::vec3(0.0f, speed, 0.0f));
+	}
+	else if (key == GLFW_KEY_LEFT && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		app->ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	}
+	else if (key == GLFW_KEY_DOWN && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		app->ubo.view = glm::translate(app->ubo.view, glm::vec3(0.0f, -speed, 0.0f));
+	}
+	else if (key == GLFW_KEY_RIGHT && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		app->ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+	}
+	else if (key == GLFW_KEY_R && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		app->updateGraphicsPiepline();
 	}
 }
 
