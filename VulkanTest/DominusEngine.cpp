@@ -276,9 +276,9 @@ void Dominus::loadModel()
 
 	//std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
 
-	for (const auto& shape : shapes) 
+	for (const auto& shape : shapes)
 	{
-		for (const auto& index : shape.mesh.indices) 
+		for (const auto& index : shape.mesh.indices)
 		{
 			Vertex vertex = {};
 
@@ -293,25 +293,25 @@ void Dominus::loadModel()
 				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
 			};
 
-			vertex.color = { 
-				1.0f, 1.0f, 1.0f 
+			vertex.color = {
+				1.0f, 1.0f, 1.0f
 			};
 
 			/*if (uniqueVertices.count(vertex) == 0)
 			{
 				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
 				vertices.push_back(vertex);
-			}*/	
+			}*/
 
 			vertices.push_back(vertex);
 			//indices.push_back(static_cast<uint32_t>(uniqueVertices.size()));
-			
+
 			indices.push_back(static_cast<uint32_t>(indices.size()));
 		}
 	}
 }
 
-void Dominus::updateGraphicsPiepline()
+void Dominus::swapGraphicsPipeline(VkPipeline aPipeline)
 {
 	for (size_t i = 0; i < commandBuffers.size(); i++)
 	{
@@ -322,30 +322,30 @@ void Dominus::updateGraphicsPiepline()
 
 		vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
 
-		std::array<VkClearValue, 2> clearValues = {};
-		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-		clearValues[1].depthStencil = { 1.0f, 0 };
+			std::array<VkClearValue, 2> clearValues = {};
+			clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+			clearValues[1].depthStencil = { 1.0f, 0 };
 
-		VkRenderPassBeginInfo renderPassInfo = {};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = gRenderPass;
-		renderPassInfo.framebuffer = gSwapChainFramebuffers[i];
-		renderPassInfo.renderArea.offset = { 0,0 };
-		renderPassInfo.renderArea.extent = gSwapChainExtent;
-		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-		renderPassInfo.pClearValues = clearValues.data();
+			VkRenderPassBeginInfo renderPassInfo = {};
+			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			renderPassInfo.renderPass = gRenderPass;
+			renderPassInfo.framebuffer = gSwapChainFramebuffers[i];
+			renderPassInfo.renderArea.offset = { 0,0 };
+			renderPassInfo.renderArea.extent = gSwapChainExtent;
+			renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+			renderPassInfo.pClearValues = clearValues.data();
 
-		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gGraphicsPipeline2);
+			vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aPipeline);
 
-		VkBuffer vertexBuffers[] = { vertexBuffer };
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+			VkBuffer vertexBuffers[] = { vertexBuffer };
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
-		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-		vkCmdEndRenderPass(commandBuffers[i]);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+			vkCmdEndRenderPass(commandBuffers[i]);
 
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to record command buffer!");
@@ -730,6 +730,7 @@ void Dominus::createUniformBuffer()
 	ubo.model = glm::mat4(1.0f);
 	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.proj = glm::perspective(glm::radians(45.0f), gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 10.0f);
+	//ubo.proj = glm::ortho(0.0f, (float)gSwapChainExtent.width, 0.0f, (float)gSwapChainExtent.height, 0.1f, 10.0f);
 	ubo.proj[1][1] *= -1;
 }
 
@@ -1761,7 +1762,7 @@ void Dominus::onKeyCallback(GLFWwindow * window, int key, int scancode, int acti
 	}
 	else if (key == GLFW_KEY_R && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->updateGraphicsPiepline();
+		app->swapGraphicsPipeline(app->gGraphicsPipeline2);
 	}
 }
 

@@ -194,7 +194,7 @@ private:
 	void createTextureSampler();
 	void loadModel();
 
-	void updateGraphicsPiepline();
+	void swapGraphicsPipeline(VkPipeline aPipeline);
 
 	bool isDeviceSuitable(VkPhysicalDevice aDevice);
 	bool checkValidationLayerSupport();
