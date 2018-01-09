@@ -65,6 +65,13 @@ void DominusBuffer::map()
 		throw std::runtime_error("Failed to map memory!");
 }
 
+void DominusBuffer::setDescriptor(VkDeviceSize aSize, VkDeviceSize aOffset)
+{
+	descriptor.buffer = buffer;
+	descriptor.offset = aOffset;
+	descriptor.range = aSize;
+}
+
 void DominusBuffer::copyTo(void* aDest)
 {
 	std::cout << "Copying memory to destination: " <<  aDest << std::endl;

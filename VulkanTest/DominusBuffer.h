@@ -1,5 +1,5 @@
 #pragma once
-#include <vulkan\vulkan.h>
+#include <vulkan\vulkan.hpp>
 
 class DominusBuffer
 {
@@ -20,6 +20,7 @@ public:
 
 	// Create VkBuffer find memory requirements allocate buffer memory
 	// and bind buffer to device
+	// TODO: move to device
 	void create(const VkPhysicalDevice& physicalDevice);
 	
 	// Bind buffer to physical device
@@ -27,6 +28,9 @@ public:
 
 	// Map buffer and buffer memory to device
 	void map();
+
+	// Sets up descriptor
+	void setDescriptor(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);
 
 	// Copy memory to destination
 	void copyTo(void* dest);

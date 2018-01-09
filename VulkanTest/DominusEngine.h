@@ -6,6 +6,7 @@
 #include "DominusBuffer.h"
 #include "DominusCamera.h"
 
+#include <vulkan\vulkan.hpp>
 #include <vector>
 #include <array>
 #include <string>
