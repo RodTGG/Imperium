@@ -69,18 +69,77 @@ VkShaderModule DominusTools::loadShader(const VkDevice & device, const std::stri
 	return shaderModule;
 }
 
-uint32_t DominusTools::findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)
+std::string DominusTools::queueFamilyFlagToString(const VkQueueFamilyProperties queueFamily)
 {
-	std::cout << "Finding memory type: " << typeFilter << std::endl;
+	std::string result;
 
-	VkPhysicalDeviceMemoryProperties memProperties;
-	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+	if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+		result += "GRAPHICS_BIT, ";
 
-	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+	if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)
+		result += "COMPUTE_BIT, ";
+
+	if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT)
+		result += "TRANSFER_BIT";
+
+	return result;
+}
+
+char* DominusTools::presentModeToString(const VkPresentModeKHR presentMode)
+{
+	switch (presentMode)
 	{
-		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-			return i;
+	case VK_PRESENT_MODE_FIFO_KHR:
+		return "FIFO_KHR";
+		break;
+	case VK_PRESENT_MODE_FIFO_RELAXED_KHR:
+		return "FIFO_RELAXED_KHR";
+		break;
+	case VK_PRESENT_MODE_MAILBOX_KHR:
+		return "MAILBOX_KHR";
+		break;
+	case VK_PRESENT_MODE_IMMEDIATE_KHR:
+		return "IMMEDIATE_KHR";
+		break;
+	default:
+		return "Unknown present mode";
+		break;
+	}
+}
+
+std::string DominusTools::surfaceFormatToString(const VkSurfaceFormatKHR surfaceFormat)
+{
+	std::string result;
+
+	switch (surfaceFormat.format)
+	{
+	case VK_FORMAT_B8G8R8A8_UNORM:
+		result = "B8G8R8A8_UNORM";
+		break;
+	case VK_FORMAT_UNDEFINED:
+		result = "No preference";
+		break;
+	default:
+		result = "Unknown present mode format";
+		break;
 	}
 
-	throw std::runtime_error("Failed to find suitable memory type!");
+	result += ", ";
+
+	switch (surfaceFormat.colorSpace)
+	{
+	case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:
+		result += "SRGB_NONLINEAR_KHR";
+		break;
+	case VK_COLOR_SPACE_RANGE_SIZE_KHR:
+		result += "RANGE_SIZE_KHR";
+		break;
+	case VK_COLOR_SPACE_MAX_ENUM_KHR:
+		result += "MAX_ENUM_KHR";
+	default:
+		result += "unknown color space";
+		break;
+	}
+
+	return result;
 }

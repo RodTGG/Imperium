@@ -3,6 +3,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define GLM_ENABLE_EXPERIMENTAL
 
+#include "DominusDevice.h"
 #include "DominusBuffer.h"
 #include "DominusCamera.h"
 
@@ -97,26 +98,23 @@ private:
 //#endif //  NDEBUG
 
 	const std::vector<const char*> validationLayers = { "VK_LAYER_LUNARG_standard_validation" };
-	const std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+	const std::vector<const char*> requiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;
 
-	int gQGraphicsFamily = -1;
-	int gQPresentFamily = -1;
 	float deltaTime;
 
 	DominusCamera camera;
+	DominusDevice gDevice;
 
 	GLFWwindow* gWindow;
 	VkInstance gInstance;
+
 	VkDebugReportCallbackEXT gCallback;
-	VkPhysicalDevice gPhysicalDevice;
 	VkQueue gGraphicsQueue;
 	VkQueue gPresentQueue;
-	VkDevice gDevice;
 	VkSurfaceKHR gSurface;
-	VkSurfaceCapabilitiesKHR gCapabilities;
 	UniformBufferObject ubo = {};
 
 	VkSwapchainKHR gSwapChain;
@@ -148,8 +146,6 @@ private:
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
 
-	std::vector<VkSurfaceFormatKHR> gFormats;
-	std::vector<VkPresentModeKHR> gPresentModes;
 	std::vector<VkFramebuffer> gSwapChainFramebuffers;
 	std::vector<VkCommandBuffer> commandBuffers;
 	std::vector<Vertex> vertices;
@@ -157,16 +153,14 @@ private:
 
 	void initVulkan();
 	void initWindow();
-	void cleanUp();
 	void gameLoop();
+	void cleanUp();
 	void createVKInstance();
 	void setupDebugCallback();
 	void pickPyshicalDevice();
 	void createLogicalDevice();
 	void createSurface();
-	void findQueueFamilies(VkPhysicalDevice);
 	void destroyDebugReportCallbackEXT(VkInstance aInstance, VkDebugReportCallbackEXT aCallback, const VkAllocationCallbacks* aAllocator);
-	void querySwapChainSupport(VkPhysicalDevice);
 	void createSwapChain();
 	void createGraphicsPipeline();
 	void createRenderPass();
@@ -198,9 +192,8 @@ private:
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void swapGraphicsPipeline(VkPipeline aPipeline);
 
-	bool isDeviceSuitable(VkPhysicalDevice aDevice);
+	bool isDeviceSuitable(DominusDevice device);
 	bool checkValidationLayerSupport();
-	bool checkDeviceExtensionSupport(VkPhysicalDevice aDevice);
 
 	std::vector<const char*> getRequiredExtensions();
 

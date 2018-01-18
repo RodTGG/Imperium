@@ -19,7 +19,13 @@ public:
 	// Returns true if the format contains stencil component
 	static bool hasStencilComponent(VkFormat format);
 
-	// Returns index of memory type specified
-	static uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
+	// Returns custom name for queue family property queue flags
+	static std::string queueFamilyFlagToString(const VkQueueFamilyProperties queueFamily);
+
+	// Return custom name for present mode object
+	static char* presentModeToString(const VkPresentModeKHR presentMode);
+	
+	// Return custom name for surface format object
+	static std::string surfaceFormatToString(const VkSurfaceFormatKHR surfaceFormat);
 private:
 };

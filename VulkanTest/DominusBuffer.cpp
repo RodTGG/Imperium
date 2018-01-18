@@ -18,37 +18,6 @@ DominusBuffer::~DominusBuffer()
 {
 }
 
-void DominusBuffer::create(const VkPhysicalDevice& physicalDevice)
-{
-	std::cout << "Creating buffer:" << std::endl;
-	std::cout << "\tSize: " << size << " bytes" << std::endl;
-	std::cout << "\tUsage: " << usageFlags << std::endl;
-
-	VkBufferCreateInfo bufferInfo = {};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = size;
-	bufferInfo.usage = usageFlags;
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer))
-		throw std::runtime_error("Failed to create buffer!");
-
-	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
-
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = DominusTools::findMemoryType(physicalDevice, memRequirements.memoryTypeBits, memoryPropertyFlags);
-
-	std::cout << "\tAllocating memory" << std::endl;
-
-	if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-		throw std::runtime_error("Failed to allocate memory!");
-
-	bind();
-}
-
 void DominusBuffer::bind()
 {
 	std::cout << "Binding buffer to device" << std::endl;

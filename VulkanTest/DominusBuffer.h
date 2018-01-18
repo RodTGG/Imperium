@@ -17,11 +17,6 @@ public:
 	DominusBuffer();
 	DominusBuffer(const VkDevice& device, const VkDeviceSize size, const VkBufferUsageFlags usageFlags, const VkMemoryPropertyFlags memoryPropertyFlags);
 	~DominusBuffer();
-
-	// Create VkBuffer find memory requirements allocate buffer memory
-	// and bind buffer to device
-	// TODO: move to device
-	void create(const VkPhysicalDevice& physicalDevice);
 	
 	// Bind buffer to physical device
 	void bind();
