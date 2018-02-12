@@ -1,8 +1,5 @@
 #pragma once
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
+#include "DominusModel.h"
 #include <vulkan\vulkan.h>
 
 class DominusTools
@@ -15,9 +12,6 @@ public:
 
 	// Load binary SPV file and return created VkShaderModule
 	static VkShaderModule loadShader(const VkDevice& device, const std::string& filePath);
-	
-	// Returns true if the format contains stencil component
-	static bool hasStencilComponent(VkFormat format);
 
 	// Returns custom name for queue family property queue flags
 	static std::string queueFamilyFlagToString(const VkQueueFamilyProperties queueFamily);
@@ -27,5 +21,7 @@ public:
 	
 	// Return custom name for surface format object
 	static std::string surfaceFormatToString(const VkSurfaceFormatKHR surfaceFormat);
+
+	//static DominusModel loadModelFromFile(const std::string fPath);
 private:
 };

@@ -62,9 +62,9 @@ VkResult DominusDevice::createLogicalDevice(VkPhysicalDeviceFeatures aEnableFeat
 	float queuePriority = 1.0f;
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-	std::set<uint32_t> uniqueQueueFamilies = { queueFamilyIndices.graphics, queueFamilyIndices.present };
+	std::set<int32_t> uniqueQueueFamilies = { queueFamilyIndices.graphics, queueFamilyIndices.present };
 
-	for (uint32_t queueFamily : uniqueQueueFamilies)
+	for (int32_t queueFamily : uniqueQueueFamilies)
 	{
 		VkDeviceQueueCreateInfo queueCreateInfo = {};
 		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -97,47 +97,49 @@ VkResult DominusDevice::createLogicalDevice(VkPhysicalDeviceFeatures aEnableFeat
 	return result;
 }
 
-VkResult DominusDevice::createBuffer(DominusBuffer & buffer)
+//DominusBuffer DominusDevice::createBuffer(DominusBuffer & buffer)
+//{
+//	std::cout << "Creating buffer:" << std::endl;
+//	std::cout << "\tSize: " << buffer.size << " bytes" << std::endl;
+//	std::cout << "\tUsage: " << buffer.usageFlags << std::endl;
+//
+//	VkBufferCreateInfo bufferInfo = {};
+//	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+//	bufferInfo.size = buffer.size;
+//	bufferInfo.usage = buffer.usageFlags;
+//	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+//
+//	if (vkCreateBuffer(logicalDevice, &bufferInfo, nullptr, &buffer.buffer) != VK_SUCCESS)
+//		throw std::runtime_error("Failed to create buffer");
+//
+//	VkMemoryRequirements memRequirements;
+//	vkGetBufferMemoryRequirements(logicalDevice, buffer.buffer, &memRequirements);
+//
+//	VkMemoryAllocateInfo allocInfo = {};
+//	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+//	allocInfo.allocationSize = memRequirements.size;
+//	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, buffer.memoryPropertyFlags);
+//
+//	if (vkAllocateMemory(logicalDevice, &allocInfo, nullptr, &buffer.bufferMemory) != VK_SUCCESS)
+//		throw std::runtime_error("Failed to allocate memory!");
+//
+//	buffer.setDescriptor();
+//	buffer.bind();
+//
+//	return buffer;
+//}
+
+VkResult DominusDevice::createBuffer(DominusBuffer& buffer, const VkDeviceSize size, const VkBufferUsageFlags usageFlags, const VkMemoryPropertyFlags memoryPropertyFlags)
 {
-	std::cout << "Creating buffer:" << std::endl;
-	std::cout << "\tSize: " << buffer.size << " bytes" << std::endl;
-	std::cout << "\tUsage: " << buffer.usageFlags << std::endl;
-
-	VkBufferCreateInfo bufferInfo = {};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = buffer.size;
-	bufferInfo.usage = buffer.usageFlags;
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	if (vkCreateBuffer(logicalDevice, &bufferInfo, nullptr, &buffer.buffer) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Failed to create buffer");
-	}
-
-	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(logicalDevice, buffer.buffer, &memRequirements);
-
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, buffer.memoryPropertyFlags);
-
-	if (vkAllocateMemory(logicalDevice, &allocInfo, nullptr, &buffer.bufferMemory) != VK_SUCCESS)
-		throw std::runtime_error("Failed to allocate memory!");
-
-	buffer.setDescriptor();
-	buffer.bind();
-
-	return VK_SUCCESS;
-}
-
-VkResult DominusDevice::createBuffer(DominusBuffer & buffer, const VkDeviceSize size, const VkBufferUsageFlags usageFlags, const VkMemoryPropertyFlags memoryPropertyFlags)
-{
-	std::cout << "Creating buffer:" << std::endl;
+	std::cout << "Creating buffer" << std::endl;
 	std::cout << "\tSize: " << size << " bytes" << std::endl;
 	std::cout << "\tUsage: " << usageFlags << std::endl;
 
-	buffer = DominusBuffer(logicalDevice, size, usageFlags, memoryPropertyFlags);
+	//buffer = DominusBuffer(logicalDevice, size, usageFlags, memoryPropertyFlags);
+	buffer.device = logicalDevice;
+	buffer.bufferSize = size;
+	buffer.usageFlags = usageFlags;
+	buffer.memoryPropertyFlags = memoryPropertyFlags;
 
 	VkBufferCreateInfo bufferInfo = {};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -145,10 +147,8 @@ VkResult DominusDevice::createBuffer(DominusBuffer & buffer, const VkDeviceSize 
 	bufferInfo.usage = usageFlags;
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	if (vkCreateBuffer(logicalDevice, &bufferInfo, nullptr, &buffer.buffer) != VK_SUCCESS) 
-	{
+	if (vkCreateBuffer(logicalDevice, &bufferInfo, nullptr, &buffer.buffer) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create buffer");
-	}
 
 	VkMemoryRequirements memRequirements;
 	vkGetBufferMemoryRequirements(logicalDevice, buffer.buffer, &memRequirements);
@@ -165,6 +165,80 @@ VkResult DominusDevice::createBuffer(DominusBuffer & buffer, const VkDeviceSize 
 	buffer.bind();
 
 	return VK_SUCCESS;
+}
+
+VkResult DominusDevice::copyBuffer(DominusBuffer & aSource, DominusBuffer & aDestination, const VkBufferCopy& copyRegion, const VkQueue& queue)
+{
+	VkCommandBuffer cmdBuffer;
+
+	std::cout << "Copying buffer" << std::endl;
+
+	createCommandBuffer(cmdBuffer);
+	vkCmdCopyBuffer(cmdBuffer, aSource.buffer, aDestination.buffer, 1, &copyRegion);
+	submitCommandBuffer(cmdBuffer, queue);
+
+	return VK_SUCCESS;
+}
+
+void DominusDevice::createCommandBuffer(VkCommandBuffer& commandBuffer, const VkCommandBufferLevel & level)
+{
+	std::cout << "Creating command buffer" << std::endl;
+
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = level;
+	allocInfo.commandPool = graphicsCommandPool;
+	allocInfo.commandBufferCount = 1;
+
+	if (vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create command buffer");
+
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+		throw std::runtime_error("Failed to begin command buffer");
+}
+
+VkResult DominusDevice::submitCommandBuffer(VkCommandBuffer & commandBuffer, const VkQueue & queue)
+{
+	std::cout << "Submitting commands" << std::endl;
+
+	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+		throw std::runtime_error("Failed to end command buffer");
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	VkFence cmdFence = createFence();
+
+	if (vkQueueSubmit(queue, 1, &submitInfo, cmdFence) != VK_SUCCESS)
+		throw std::runtime_error("Failed to submit to queue");
+
+	if (vkWaitForFences(logicalDevice, 1, &cmdFence, VK_FALSE, UINT64_MAX) != VK_SUCCESS)
+		throw std::runtime_error("Failed to wait for fences");
+
+	vkDestroyFence(logicalDevice, cmdFence, nullptr);
+	vkFreeCommandBuffers(logicalDevice, graphicsCommandPool, 1, &commandBuffer);
+
+	return VK_SUCCESS;
+}
+
+VkFence DominusDevice::createFence(const VkFenceCreateFlags flags)
+{
+	VkFence result;
+
+	VkFenceCreateInfo fenceInfo = {};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = flags;
+
+	if (vkCreateFence(logicalDevice, &fenceInfo, nullptr, &result) != VK_SUCCESS)
+		throw std::runtime_error("Failed to crate VkFence");
+
+	return result;
 }
 
 void DominusDevice::querySwapChainSupport(const VkSurfaceKHR& surface)
@@ -191,11 +265,11 @@ void DominusDevice::querySwapChainSupport(const VkSurfaceKHR& surface)
 
 int32_t DominusDevice::getQueueFamilyIndex(const VkQueueFlags& flags)
 {
-	for (int32_t i = 0; i < queueFamilyProperties.size(); i++)
+	for (size_t i = 0; i < queueFamilyProperties.size(); i++)
 	{
 		if (queueFamilyProperties[i].queueFlags & flags)
 		{
-			return i;
+			return (int32_t)i;
 			break;
 		}
 	}
@@ -209,13 +283,13 @@ int32_t DominusDevice::getQueueFamilyIndexPresentation(const VkSurfaceKHR& surfa
 {
 	VkBool32 presentSupport;
 
-	for (int32_t i = 0; i < queueFamilyProperties.size(); i++)
+	for (size_t i = 0; i < queueFamilyProperties.size(); i++)
 	{
-		vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentSupport);
+		vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, (int32_t)i, surface, &presentSupport);
 
 		if (presentSupport)
 		{
-			return i;
+			return (int32_t)i;
 			break;
 		}
 	}

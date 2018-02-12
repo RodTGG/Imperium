@@ -9,28 +9,41 @@ DominusBuffer::DominusBuffer()
 DominusBuffer::DominusBuffer(const VkDevice & aDevice, const VkDeviceSize aSize, const VkBufferUsageFlags aUsageFlags, const VkMemoryPropertyFlags aMemoryPropertyFlags)
 {
 	device = aDevice;
-	size = aSize;
+	bufferSize = aSize;
 	usageFlags = aUsageFlags;
 	memoryPropertyFlags = aMemoryPropertyFlags;
 }
 
 DominusBuffer::~DominusBuffer()
 {
+	std::cout << "Destroying buffer" << std::endl;
+
+	if (buffer)
+	{
+		vkDestroyBuffer(device, buffer, nullptr);
+		buffer = VK_NULL_HANDLE;
+	}
+
+	if (bufferMemory)
+	{
+		vkFreeMemory(device, bufferMemory, nullptr);
+		bufferMemory = VK_NULL_HANDLE;
+	}
 }
 
-void DominusBuffer::bind()
+void DominusBuffer::bind(VkDeviceSize aOffset)
 {
-	std::cout << "Binding buffer to device" << std::endl;
+	//std::cout << "Binding buffer to device" << std::endl;
 
-	if (vkBindBufferMemory(device, buffer, bufferMemory, offset) != VK_SUCCESS)
+	if (vkBindBufferMemory(device, buffer, bufferMemory, aOffset) != VK_SUCCESS)
 		throw std::runtime_error("Failed to bind buffer!");
 }
 
 void DominusBuffer::map()
 {
-	std::cout << "Mapping buffer memory to device" << std::endl;
+	//std::cout << "Mapping buffer memory to device" << std::endl;
 
-	if (vkMapMemory(device, bufferMemory, offset, size, 0, &pData) != VK_SUCCESS)
+	if (vkMapMemory(device, bufferMemory, 0, bufferSize, 0, &pData) != VK_SUCCESS)
 		throw std::runtime_error("Failed to map memory!");
 }
 
@@ -41,25 +54,25 @@ void DominusBuffer::setDescriptor(VkDeviceSize aSize, VkDeviceSize aOffset)
 	descriptor.range = aSize;
 }
 
-void DominusBuffer::copyTo(void* aDest)
+void DominusBuffer::copyTo(void* src)
 {
-	std::cout << "Copying memory to destination: " <<  aDest << std::endl;
+	//std::cout << "Copying memory to destination: " <<  aDest << std::endl;
 
-	memcpy(pData, aDest, (size_t)size);
+	memcpy(pData, src, (size_t)bufferSize);
 }
 
-void DominusBuffer::transfer(void * dest)
+void DominusBuffer::transfer(void * src)
 {
-	std::cout << "Transfering data" << std::endl;
+	//std::cout << "Transfering data" << std::endl;
 
 	map();
-	copyTo(dest);
-	unmapBuffer();
+	copyTo(src);
+	unmap();
 }
 
-void DominusBuffer::unmapBuffer()
+void DominusBuffer::unmap()
 {
-	std::cout << "Unmapping memory from device" << std::endl;
+	//std::cout << "Unmapping memory from device" << std::endl;
 
 	if (pData)
 	{

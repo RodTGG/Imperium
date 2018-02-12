@@ -1,5 +1,4 @@
 #include "DominusEngine.h"
-#include "DominusTools.h"
 #include <iostream>
 #include <set>
 #include <algorithm>
@@ -7,20 +6,21 @@
 #include <chrono>
 #include <stb_image.h>
 #include <unordered_map>
+//#include <iomanip>
 
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
-
-Dominus::Dominus()
+DominusEngine::DominusEngine()
 {
 }
 
-Dominus::~Dominus()
+DominusEngine::~DominusEngine()
 {
-	//cleanUp();
+	for (auto p : sceneModels)
+		delete p;
+
+	cleanUp();
 }
 
-void Dominus::initVulkan()
+void DominusEngine::initVulkan()
 {
 	createVKInstance();
 	setupDebugCallback();
@@ -38,7 +38,7 @@ void Dominus::initVulkan()
 	createTextureImage();
 	createTextureImageView();
 	createTextureSampler();
-	loadModel();
+	loadModels();
 	createVertexBuffer();
 	createIndexBuffer();
 	createUniformBuffer();
@@ -48,14 +48,17 @@ void Dominus::initVulkan()
 	createSempahores();
 }
 
-void Dominus::initWindow()
+void DominusEngine::initWindow()
 {
 	int major, minor, revision;
+	//int monitorCount;
 
 	glfwSetErrorCallback(glfwErrorCallback);
 
 	if (!glfwInit())
 		throw std::runtime_error("Failed to initialize GLFW");
+
+	//GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
 
 	glfwGetVersion(&major, &minor, &revision);
 	std::cout << "Running GLFW (" << major << "," << minor << "," << revision << ")" << std::endl;
@@ -79,15 +82,15 @@ void Dominus::initWindow()
 	glfwSetKeyCallback(gWindow, onKeyCallback);
 }
 
-void Dominus::run()
+void DominusEngine::run()
 {
 	initWindow();
 	initVulkan();
 	gameLoop();
-	cleanUp();
+	//cleanUp();
 }
 
-void Dominus::gameLoop()
+void DominusEngine::gameLoop()
 {
 	std::cout << "Entering game loop" << std::endl;
 
@@ -100,7 +103,7 @@ void Dominus::gameLoop()
 	vkDeviceWaitIdle(gDevice);
 }
 
-void Dominus::cleanUp()
+void DominusEngine::cleanUp()
 {
 	std::cout << "Cleaning up" << std::endl;
 
@@ -116,7 +119,7 @@ void Dominus::cleanUp()
 	vertexBuffer.destroy();
 	vkDestroySemaphore(gDevice, renderFinishedSemaphore, nullptr);
 	vkDestroySemaphore(gDevice, imageAvailableSemaphore, nullptr);
-	vkDestroyCommandPool(gDevice, commandPool, nullptr);
+	vkDestroyCommandPool(gDevice, gDevice.graphicsCommandPool, nullptr);
 	vkDestroyDevice(gDevice, nullptr);
 	destroyDebugReportCallbackEXT(gInstance, gCallback, nullptr);
 	vkDestroySurfaceKHR(gInstance, gSurface, nullptr);
@@ -125,7 +128,7 @@ void Dominus::cleanUp()
 	glfwTerminate();
 }
 
-void Dominus::createVKInstance()
+void DominusEngine::createVKInstance()
 {
 	std::cout << "Creating Vulkan instance" << std::endl;
 
@@ -161,7 +164,7 @@ void Dominus::createVKInstance()
 		throw std::runtime_error("Failed to create instance");
 }
 
-void Dominus::setupDebugCallback()
+void DominusEngine::setupDebugCallback()
 {
 	if (!enableValidationLayers)
 		return;
@@ -175,9 +178,10 @@ void Dominus::setupDebugCallback()
 
 	if (createDebugReportCallbackEXT(gInstance, &createInfo, nullptr, &gCallback) != VK_SUCCESS)
 		throw std::runtime_error("Failed to set up debug callback!");
+
 }
 
-void Dominus::pickPyshicalDevice()
+void DominusEngine::pickPyshicalDevice()
 {
 	uint32_t deviceCount = 0;
 
@@ -206,7 +210,7 @@ void Dominus::pickPyshicalDevice()
 		throw std::runtime_error("Failed to find a suitable GPU");
 }
 
-bool Dominus::isDeviceSuitable(DominusDevice aDevice)
+bool DominusEngine::isDeviceSuitable(DominusDevice aDevice)
 {
 	VkBool32 presentSupport = false;
 	int32_t graphicsQIndex;
@@ -214,8 +218,8 @@ bool Dominus::isDeviceSuitable(DominusDevice aDevice)
 
 	std::cout << "Checking if device is suitable" << std::endl;
 
-	graphicsQIndex = aDevice.getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
-	presentQIndex = aDevice.getQueueFamilyIndexPresentation(gSurface);
+	graphicsQIndex = (int32_t)aDevice.getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
+	presentQIndex = (int32_t)aDevice.getQueueFamilyIndexPresentation(gSurface);
 
 	if (graphicsQIndex == -1 || presentQIndex == -1)
 		return false;
@@ -246,6 +250,12 @@ bool Dominus::isDeviceSuitable(DominusDevice aDevice)
 		return false;
 	}
 
+	if (!aDevice.features.sampleRateShading) 
+	{
+		std::cout << "Multisampling not supported" << std::endl;
+		return false;
+	}
+
 	if (!aDevice.features.fillModeNonSolid)
 	{
 		std::cout << "Fill mode non solid not supported" << std::endl;
@@ -257,7 +267,7 @@ bool Dominus::isDeviceSuitable(DominusDevice aDevice)
 	return true;
 }
 
-void Dominus::createLogicalDevice()
+void DominusEngine::createLogicalDevice()
 {
 	std::cout << "Creating logical device" << std::endl;
 
@@ -266,7 +276,8 @@ void Dominus::createLogicalDevice()
 
 	VkPhysicalDeviceFeatures enableFeatures = {};
 	enableFeatures.samplerAnisotropy = VK_TRUE;
-	enableFeatures.fillModeNonSolid = true;
+	enableFeatures.fillModeNonSolid = VK_TRUE;
+	enableFeatures.sampleRateShading = VK_TRUE;
 
 	if (gDevice.createLogicalDevice(enableFeatures, requiredExtensions, VK_QUEUE_GRAPHICS_BIT) != VK_SUCCESS)
 		std::runtime_error("Failed to create logical device");
@@ -277,9 +288,11 @@ void Dominus::createLogicalDevice()
 	vkGetDeviceQueue(gDevice, gDevice.queueFamilyIndices.present, 0, &gPresentQueue);
 }
 
-void Dominus::createSwapChain()
+void DominusEngine::createSwapChain()
 {
 	std::cout << "Creating swapchain" << std::endl;
+
+	gDevice.querySwapChainSupport(gSurface);
 
 	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(gDevice.surfaceFormats);
 	VkPresentModeKHR presentMode = chooseSwapPresentMode(gDevice.surfacePresentModes);
@@ -338,7 +351,7 @@ void Dominus::createSwapChain()
 	gSwapChainExtent = extent;
 }
 
-void Dominus::createImageViews()
+void DominusEngine::createImageViews()
 {
 	swapChainImageViews.resize(swapChainImages.size());
 
@@ -350,7 +363,7 @@ void Dominus::createImageViews()
 	}
 }
 
-void Dominus::createTextureSampler()
+void DominusEngine::createTextureSampler()
 {
 	VkSamplerCreateInfo samplerInfo = {};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -374,7 +387,7 @@ void Dominus::createTextureSampler()
 		throw std::runtime_error("Failed to create texture sampler!");
 }
 
-void Dominus::createGraphicsPipeline()
+void DominusEngine::createGraphicsPipeline()
 {
 	VkShaderModule vertShaderModule = DominusTools::loadShader(gDevice, "shaders/vert.spv");
 	VkShaderModule fragShaderModule = DominusTools::loadShader(gDevice, "shaders/frag.spv");
@@ -521,16 +534,11 @@ void Dominus::createGraphicsPipeline()
 	if (vkCreateGraphicsPipelines(gDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &gGraphicsPipeline) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
 
-	rasterizer.polygonMode = VK_POLYGON_MODE_POINT;
-
-	if (vkCreateGraphicsPipelines(gDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &gGraphicsPipeline2) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create graphics pipeline!");
-
 	vkDestroyShaderModule(gDevice, fragShaderModule, nullptr);
 	vkDestroyShaderModule(gDevice, vertShaderModule, nullptr);
 }
 
-void Dominus::createRenderPass()
+void DominusEngine::createRenderPass()
 {
 	std::cout << "Creating render pass" << std::endl;
 
@@ -591,12 +599,11 @@ void Dominus::createRenderPass()
 		throw std::runtime_error("Failed to create render pass!");
 }
 
-void Dominus::createFramebuffers()
+void DominusEngine::createFramebuffers()
 {
 	gSwapChainFramebuffers.resize(swapChainImageViews.size());
 
 	std::cout << "Creating frame buffers (" << gSwapChainFramebuffers.size() << ")" << std::endl;
-
 
 	for (size_t i = 0; i < swapChainImageViews.size(); i++)
 	{
@@ -616,7 +623,7 @@ void Dominus::createFramebuffers()
 	}
 }
 
-void Dominus::createCommandPool()
+void DominusEngine::createCommandPool()
 {
 	std::cout << "Creating command pool" << std::endl;
 
@@ -625,49 +632,106 @@ void Dominus::createCommandPool()
 	poolInfo.queueFamilyIndex = gDevice.queueFamilyIndices.graphics;
 	poolInfo.flags = 0;		// Optional
 
-	if (vkCreateCommandPool(gDevice, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
+	if (vkCreateCommandPool(gDevice, &poolInfo, nullptr, &gDevice.graphicsCommandPool) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create command pool!");
 }
 
-void Dominus::createVertexBuffer()
+//void Dominus::createVertexBuffer()
+//{
+//	std::cout << "Creating vertex buffer" << std::endl;
+//
+//	VkBufferCopy copyRegion = { 0, sizeof(vertices[0]) * vertices.size(), 0 };
+//
+//	DominusBuffer stagingBuffer = gDevice.createBuffer(copyRegion.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+//	stagingBuffer.transfer(vertices.data());
+//
+//	vertexBuffer = gDevice.createBuffer(copyRegion.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+//	gDevice.copyBuffer(stagingBuffer, vertexBuffer, gGraphicsQueue, copyRegion);
+//}
+
+//void Dominus::createIndexBuffer()
+//{
+//	std::cout << "Creating index buffer" << std::endl;
+//
+//	VkBufferCopy copyRegion = { 0 , sizeof(indices[0]) * indices.size(), 0 };
+//
+//	DominusBuffer stagingBuffer = gDevice.createBuffer(copyRegion.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+//	stagingBuffer.transfer(indices.data());
+//
+//	indexBuffer = DominusBuffer(gDevice, copyRegion.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+//	gDevice.createBuffer(indexBuffer);
+//	gDevice.copyBuffer(stagingBuffer, indexBuffer, gGraphicsQueue, copyRegion);
+//}
+
+void DominusEngine::loadModels()
 {
-	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+	DominusModel* tmp = new DominusModel(gDevice, vertexBuffer, glm::vec3(0.0f));
+	tmp->loadFromFile("meshes/invader.obj");
 
-	std::cout << "Creating staging buffer" << std::endl;
+	std::cout << *tmp << std::endl;
 
-	DominusBuffer stagingBuffer(gDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	gDevice.createBuffer(stagingBuffer);
-	stagingBuffer.transfer(vertices.data());
+	sceneModels.push_back(tmp);
+}
+
+// TODO Fix memory mapping making vertex data unreadable
+void DominusEngine::createVertexBuffer()
+{
+	// Vertex buffer size needs to be equal to size of all scene component vertex * sizeof(vertex position vector)
 
 	std::cout << "Creating vertex buffer" << std::endl;
 
-	vertexBuffer = DominusBuffer(gDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	gDevice.createBuffer(vertexBuffer);
-	copyBuffer(stagingBuffer.buffer, vertexBuffer.buffer, bufferSize);
+	VkDeviceSize bufferSize;
+	//VkDeviceSize vertexSize = sizeof(sceneModels[0]->vertices[0]);
+	//VkDeviceSize testSize = sizeof(glm::vec3);
 
-	stagingBuffer.destroy();
+	/*for (auto model : sceneModels)
+		bufferSize += model->vertices.size();*/
+
+	bufferSize = sceneModels[0]->vertices.size() * sizeof(sceneModels[0]->vertices[0]);
+
+	//bufferSize *= vertexSize;
+
+	DominusBuffer stagingBuffer;
+	gDevice.createBuffer(stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	
+	//for (auto model : sceneModels)
+	stagingBuffer.transfer(sceneModels[0]->vertices.data());
+
+	VkBufferCopy bufferCopy;
+	bufferCopy.size = bufferSize;
+
+	gDevice.createBuffer(vertexBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	gDevice.copyBuffer(stagingBuffer, vertexBuffer, bufferCopy, gGraphicsQueue);
 }
 
-void Dominus::createIndexBuffer()
+void DominusEngine::createIndexBuffer()
 {
-	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-	std::cout << "Creating staging buffer" << std::endl;
-
-	DominusBuffer stagingBuffer(gDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	gDevice.createBuffer(stagingBuffer);
-	stagingBuffer.transfer(indices.data());
+	// Index buffer size must be equal to indices count * sizeof(single index)
 
 	std::cout << "Creating index buffer" << std::endl;
 
-	indexBuffer = DominusBuffer(gDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	gDevice.createBuffer(indexBuffer);
-	copyBuffer(stagingBuffer.buffer, indexBuffer.buffer, bufferSize);
+	VkDeviceSize bufferSize;
+	DominusBuffer stagingBuffer;
 
-	stagingBuffer.destroy();
+	/*for (auto model : sceneModels){
+		bufferCopy.size += sizeof(model->indices);
+		indices.insert(indices.end(), model->indices.begin(), model->indices.end());
+	}*/
+
+	bufferSize = sceneModels[0]->indices.size() * sizeof(sceneModels[0]->indices[0]);
+
+	gDevice.createBuffer(stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	stagingBuffer.transfer(sceneModels[0]->indices.data());
+
+	VkBufferCopy bufferCopy;
+	bufferCopy.size = bufferSize;
+
+	gDevice.createBuffer(indexBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	gDevice.copyBuffer(stagingBuffer, indexBuffer, bufferCopy, gGraphicsQueue);
 }
 
-void Dominus::createCommandBuffers()
+
+void DominusEngine::createCommandBuffers()
 {
 	commandBuffers.resize(gSwapChainFramebuffers.size());
 
@@ -675,7 +739,7 @@ void Dominus::createCommandBuffers()
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = commandPool;
+	allocInfo.commandPool = gDevice.graphicsCommandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
 
@@ -707,13 +771,23 @@ void Dominus::createCommandBuffers()
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gGraphicsPipeline);
 
-		VkBuffer vertexBuffers[] = { vertexBuffer.buffer };
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+		//std::vector<VkBuffer> vBuffers;
+		//std::vector<VkDeviceSize> offsets;
+		//offsets.push_back(0);
+
+		VkDeviceSize offsets[1] = { 0 };
+
+		//for (size_t i = 0; i < sceneModels.size(); ++i)
+		//{
+		//	vBuffers.push_back(sceneModels[i]->vBuffer.buffer);
+		//	//offsets.push_back(sizeof(sceneModels[i]->vBuffer.buffer));
+		//}
+
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
-		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(sceneModels[0]->indices.size()), 1, 0, 0, 0);
 		vkCmdEndRenderPass(commandBuffers[i]);
 
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
@@ -721,17 +795,16 @@ void Dominus::createCommandBuffers()
 	}
 }
 
-void Dominus::createUniformBuffer()
+void DominusEngine::createUniformBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
 	std::cout << "Creating uniform buffer" << std::endl;
 
-	uniformBuffer = DominusBuffer(gDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	gDevice.createBuffer(uniformBuffer);
+	gDevice.createBuffer(uniformBuffer, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	camera.setTranslation(glm::vec3(2.0f, 2.0f, 2.0f));
-	camera.setPerspective(90.0f, gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.01f, 10.0f);
+	camera.setTranslation(glm::vec3(0.0f, 40.0f, 0.0f));
+	camera.setPerspective(90.0f, gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.01f, 150.0f);
 	camera.setLookAt(glm::vec3(0.0f, 0.0f, 0.0f));
 
 	ubo.model = glm::mat4(1.0f);
@@ -739,7 +812,7 @@ void Dominus::createUniformBuffer()
 	ubo.proj = camera.perspective;
 }
 
-void Dominus::createSempahores()
+void DominusEngine::createSempahores()
 {
 	std::cout << "Creating semaphores" << std::endl;
 
@@ -750,7 +823,7 @@ void Dominus::createSempahores()
 		throw std::runtime_error("Failed to create semaphores!");
 }
 
-void Dominus::createDescriptorPool()
+void DominusEngine::createDescriptorPool()
 {
 	std::cout << "Creating descriptor pool" << std::endl;
 
@@ -770,7 +843,7 @@ void Dominus::createDescriptorPool()
 		throw std::runtime_error("Failed to create descriptor pool!");
 }
 
-void Dominus::createDescriptionSetLayout()
+void DominusEngine::createDescriptionSetLayout()
 {
 	std::cout << "Creating descriptor set layout" << std::endl;
 
@@ -799,7 +872,7 @@ void Dominus::createDescriptionSetLayout()
 		throw std::runtime_error("Failed to create descriptor set layout!");
 }
 
-void Dominus::createDescriptorSet()
+void DominusEngine::createDescriptorSet()
 {
 	std::cout << "Creating descriptor set" << std::endl;
 
@@ -844,7 +917,7 @@ void Dominus::createDescriptorSet()
 	vkUpdateDescriptorSets(gDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
 
-void Dominus::createSurface()
+void DominusEngine::createSurface()
 {
 	std::cout << "Creating surface" << std::endl;
 
@@ -852,23 +925,22 @@ void Dominus::createSurface()
 		throw std::runtime_error("Failed to create window surface!");
 }
 
-void Dominus::createTextureImage()
+void DominusEngine::createTextureImage()
 {
 	int texWidth, texHeight, texChannels;
-	DominusBuffer stagingBuffer;
 
 	stbi_uc* pixels = stbi_load(TEXTURE.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 	VkDeviceSize imageSize = texWidth * texHeight * 4;
 
-	std::cout << "Loading texture image" << std::endl;
+	std::cout << "Loading texture image: " << TEXTURE << std::endl;
 	std::cout << "\tResolution: " << texWidth << "x" << texHeight << std::endl;
 	std::cout << "\tSize: " << imageSize << " bytes" << std::endl;
 
 	if (!pixels)
 		throw std::runtime_error("Failed to load texture image");
 
-	stagingBuffer = DominusBuffer(gDevice, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	gDevice.createBuffer(stagingBuffer);
+	DominusBuffer stagingBuffer;
+	gDevice.createBuffer(stagingBuffer, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	stagingBuffer.transfer(pixels);
 
 	stbi_image_free(pixels);
@@ -878,11 +950,9 @@ void Dominus::createTextureImage()
 	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	copyBufferToImage(stagingBuffer.buffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-	stagingBuffer.destroy();
 }
 
-void Dominus::createDepthResources()
+void DominusEngine::createDepthResources()
 {
 	std::cout << "Creating depth resources" << std::endl;
 
@@ -894,7 +964,7 @@ void Dominus::createDepthResources()
 	transitionImageLayout(depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
-void Dominus::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
+void DominusEngine::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
 {
 	std::cout << "Creating image texture" << std::endl;
 	std::cout << "\tResolution: " << width << "x" << height << std::endl;
@@ -934,99 +1004,7 @@ void Dominus::createImage(uint32_t width, uint32_t height, VkFormat format, VkIm
 	vkBindImageMemory(gDevice, image, imageMemory, 0);
 }
 
-void Dominus::loadModel()
-{
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
-	std::string err;
-
-	std::cout << "Loading model: " << MODEL << std::endl;
-
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, MODEL.c_str()))
-		throw std::runtime_error(err);
-
-	std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
-
-	for (const auto& shape : shapes)
-	{
-		for (const auto& index : shape.mesh.indices)
-		{
-			Vertex vertex = {};
-
-			vertex.pos = {
-				attrib.vertices[3 * index.vertex_index + 0],
-				attrib.vertices[3 * index.vertex_index + 1],
-				attrib.vertices[3 * index.vertex_index + 2]
-			};
-
-			vertex.texCoord = {
-				attrib.texcoords[2 * index.texcoord_index + 0],
-				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-			};
-
-			vertex.color = {
-				1.0f, 1.0f, 1.0f
-			};
-
-			if (uniqueVertices.count(vertex) == 0)
-			{
-				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-				vertices.push_back(vertex);
-			}
-
-			//vertices.push_back(vertex);
-			indices.push_back(uniqueVertices[vertex]);
-
-			//indices.push_back(static_cast<uint32_t>(indices.size()));
-		}
-	}
-
-	std::cout << "Loaded " << uniqueVertices.size() << " vertices" << std::endl;
-}
-
-void Dominus::swapGraphicsPipeline(VkPipeline aPipeline)
-{
-	for (size_t i = 0; i < commandBuffers.size(); i++)
-	{
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		beginInfo.pInheritanceInfo = nullptr;		// Optional.
-
-		vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
-
-		std::array<VkClearValue, 2> clearValues = {};
-		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-		clearValues[1].depthStencil = { 1.0f, 0 };
-
-		VkRenderPassBeginInfo renderPassInfo = {};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = gRenderPass;
-		renderPassInfo.framebuffer = gSwapChainFramebuffers[i];
-		renderPassInfo.renderArea.offset = { 0,0 };
-		renderPassInfo.renderArea.extent = gSwapChainExtent;
-		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-		renderPassInfo.pClearValues = clearValues.data();
-
-		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aPipeline);
-
-		VkBuffer vertexBuffers[] = { vertexBuffer.buffer };
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-
-		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-		vkCmdEndRenderPass(commandBuffers[i]);
-
-		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
-			throw std::runtime_error("Failed to record command buffer!");
-	}
-}
-
-void Dominus::drawFrame()
+void DominusEngine::drawFrame()
 {
 	uint32_t imageIndex;
 	VkSwapchainKHR swapChains[] = { gSwapChain };
@@ -1055,8 +1033,28 @@ void Dominus::drawFrame()
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	if (vkQueueSubmit(gGraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
-		throw std::runtime_error("Failed to submit draw command buffer!");
+	std::string error = "Failed to submit draw command buffer!";
+	result = vkQueueSubmit(gGraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+
+	switch (result)
+	{
+	case VK_SUCCESS:
+		break;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:
+		error += " out of host memory";
+		throw std::runtime_error(error);
+		break;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:
+		error += " out of device memory";
+		throw std::runtime_error(error);
+		break;
+	case VK_ERROR_DEVICE_LOST:
+		error += " lost device";
+		throw std::runtime_error(error);
+		break;
+	default:
+		break;
+	}
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1074,10 +1072,10 @@ void Dominus::drawFrame()
 	else if (result != VK_SUCCESS)
 		throw std::runtime_error("failed to present swap chain image!");
 
-	vkQueueWaitIdle(gPresentQueue);
+	//vkQueueWaitIdle(gPresentQueue);
 }
 
-void Dominus::recreateSwapChain()
+void DominusEngine::recreateSwapChain()
 {
 	std::cout << "Recreating swapchain" << std::endl;
 
@@ -1093,7 +1091,7 @@ void Dominus::recreateSwapChain()
 	createCommandBuffers();
 }
 
-void Dominus::cleanupSwapChain()
+void DominusEngine::cleanupSwapChain()
 {
 	std::cout << "Cleaning up swap chain" << std::endl;
 
@@ -1111,7 +1109,7 @@ void Dominus::cleanupSwapChain()
 	}*/
 
 
-	vkFreeCommandBuffers(gDevice, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+	vkFreeCommandBuffers(gDevice, gDevice.graphicsCommandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 	vkDestroyPipeline(gDevice, gGraphicsPipeline2, nullptr);
 	vkDestroyPipeline(gDevice, gGraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(gDevice, gPipelineLayout, nullptr);
@@ -1128,20 +1126,7 @@ void Dominus::cleanupSwapChain()
 
 }
 
-void Dominus::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
-{
-	std::cout << "Copying buffer" << std::endl;
-
-	VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-	VkBufferCopy copyRegion = {};
-	copyRegion.size = size;
-
-	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-	endSingleTimeCommands(commandBuffer);
-}
-
-void Dominus::updateUniformBuffer()
+void DominusEngine::updateUniformBuffer()
 {
 	static auto startTime = std::chrono::high_resolution_clock::now();
 	auto currentTime = std::chrono::high_resolution_clock::now();
@@ -1151,11 +1136,11 @@ void Dominus::updateUniformBuffer()
 	ubo.proj = camera.perspective;
 	ubo.view = camera.view;
 
-	uniformBuffer.size = sizeof(ubo);
+	uniformBuffer.bufferSize = sizeof(ubo);
 	uniformBuffer.transfer(&ubo);
 }
 
-bool Dominus::checkValidationLayerSupport()
+bool DominusEngine::checkValidationLayerSupport()
 {
 	unsigned int layerCount;
 
@@ -1185,57 +1170,20 @@ bool Dominus::checkValidationLayerSupport()
 	return true;
 }
 
-VkCommandBuffer Dominus::beginSingleTimeCommands()
-{
-	std::cout << "Begining single time command" << std::endl;
-
-	VkCommandBufferAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = commandPool;
-	allocInfo.commandBufferCount = 1;
-
-	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(gDevice, &allocInfo, &commandBuffer);
-
-	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-	return commandBuffer;
-}
-
-void Dominus::endSingleTimeCommands(VkCommandBuffer commandBuffer)
-{
-	std::cout << "Ending single time command" << std::endl;
-
-	vkEndCommandBuffer(commandBuffer);
-
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
-
-	vkQueueSubmit(gGraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(gGraphicsQueue);
-
-	vkFreeCommandBuffers(gDevice, commandPool, 1, &commandBuffer);
-}
-
-void Dominus::createTextureImageView()
+void DominusEngine::createTextureImageView()
 {
 	textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-void Dominus::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
+void DominusEngine::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
 	std::cout << "Transitioning image" << std::endl;
 
 	VkPipelineStageFlags srcStage;
 	VkPipelineStageFlags dstStage;
-	VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+	VkCommandBuffer commandBuffer;
+	
+	gDevice.createCommandBuffer(commandBuffer);
 
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1253,7 +1201,7 @@ void Dominus::transitionImageLayout(VkImage image, VkFormat format, VkImageLayou
 	{
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-		if (DominusTools::hasStencilComponent(format))
+		if (hasStencilComponent(format))
 			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 	}
 	else
@@ -1286,14 +1234,15 @@ void Dominus::transitionImageLayout(VkImage image, VkFormat format, VkImageLayou
 		throw std::runtime_error("Unsupported layout transition!");
 
 	vkCmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-	endSingleTimeCommands(commandBuffer);
+	gDevice.submitCommandBuffer(commandBuffer, gGraphicsQueue);
 }
 
-void Dominus::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+void DominusEngine::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
 {
 	std::cout << "Copying buffer to image" << std::endl;
 
-	VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+	VkCommandBuffer commandBuffer;
+	gDevice.createCommandBuffer(commandBuffer);
 
 	VkBufferImageCopy region = {};
 	region.bufferOffset = 0;
@@ -1311,10 +1260,10 @@ void Dominus::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, 
 
 	vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-	endSingleTimeCommands(commandBuffer);
+	gDevice.submitCommandBuffer(commandBuffer, gGraphicsQueue);
 }
 
-VkFormat Dominus::findDepthFormat()
+VkFormat DominusEngine::findDepthFormat()
 {
 	std::cout << "Finding depth format" << std::endl;
 
@@ -1323,7 +1272,12 @@ VkFormat Dominus::findDepthFormat()
 	return findSupportedFormat(formats, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
-VkFormat Dominus::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+bool DominusEngine::hasStencilComponent(VkFormat format)
+{
+	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+}
+
+VkFormat DominusEngine::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
 {
 	std::cout << "Finding format" << std::endl;
 
@@ -1344,7 +1298,7 @@ VkFormat Dominus::findSupportedFormat(const std::vector<VkFormat>& candidates, V
 	throw std::runtime_error("Failed to find supported format!");
 }
 
-VkImageView Dominus::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
+VkImageView DominusEngine::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
 {
 	VkImageViewCreateInfo viewInfo = {};
 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1365,7 +1319,7 @@ VkImageView Dominus::createImageView(VkImage image, VkFormat format, VkImageAspe
 	return imageView;
 }
 
-VkSurfaceFormatKHR Dominus::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+VkSurfaceFormatKHR DominusEngine::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
 	std::cout << "Picking swapchain format" << std::endl;
 
@@ -1392,7 +1346,7 @@ VkSurfaceFormatKHR Dominus::chooseSwapSurfaceFormat(const std::vector<VkSurfaceF
 	return availableFormats[0];
 }
 
-VkPresentModeKHR Dominus::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availableModes)
+VkPresentModeKHR DominusEngine::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availableModes)
 {
 	VkPresentModeKHR bestPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
@@ -1415,7 +1369,7 @@ VkPresentModeKHR Dominus::chooseSwapPresentMode(const std::vector<VkPresentModeK
 	return bestPresentMode;
 }
 
-VkExtent2D Dominus::chooseSwapExtent(const VkSurfaceCapabilitiesKHR & capabilities)
+VkExtent2D DominusEngine::chooseSwapExtent(const VkSurfaceCapabilitiesKHR & capabilities)
 {
 	std::cout << "Choosing swapchain extent" << std::endl;
 
@@ -1445,33 +1399,9 @@ VkExtent2D Dominus::chooseSwapExtent(const VkSurfaceCapabilitiesKHR & capabiliti
 	}
 }
 
-std::vector<const char*> Dominus::getRequiredExtensions()
+void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, int action, int mods)
 {
-	unsigned int glfwExtensionCount = 0;
-	const char** glfwExtensions;
-	std::vector<const char*> extensions;
-
-	std::cout << "Retrieving available GLFW Vulkan extensions" << std::endl;
-
-	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-	std::cout << "Available GLFW extensions (" << glfwExtensionCount << ") :" << std::endl;
-
-	for (unsigned int i = 0; i < glfwExtensionCount; i++)
-	{
-		std::cout << "\t" << glfwExtensions[i] << std::endl;
-		extensions.push_back(glfwExtensions[i]);
-	}
-
-	if (enableValidationLayers)
-		extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-
-	return extensions;
-}
-
-void Dominus::onKeyCallback(GLFWwindow * window, int key, int scancode, int action, int mods)
-{
-	Dominus* app = reinterpret_cast<Dominus*>(glfwGetWindowUserPointer(window));
+	DominusEngine* app = reinterpret_cast<DominusEngine*>(glfwGetWindowUserPointer(window));
 	float speed = 0.05f;
 
 #ifdef _DEBUG
@@ -1506,13 +1436,9 @@ void Dominus::onKeyCallback(GLFWwindow * window, int key, int scancode, int acti
 	{
 		app->camera.translate(glm::vec3(0.0f, 0.0f, -speed * app->deltaTime));
 	}
-	else if (key == GLFW_KEY_R && (action == GLFW_PRESS || action == GLFW_REPEAT))
-	{
-		app->swapGraphicsPipeline(app->gGraphicsPipeline2);
-	}
 }
 
-void Dominus::onWindowResized(GLFWwindow * window, int width, int height)
+void DominusEngine::onWindowResized(GLFWwindow * window, int width, int height)
 {
 	std::cout << "Window resize detected" << std::endl;
 	std::cout << "\tWidth: " << width << std::endl;
@@ -1521,16 +1447,40 @@ void Dominus::onWindowResized(GLFWwindow * window, int width, int height)
 	if (width <= 0 || height <= 0)
 		return;
 
-	Dominus* app = reinterpret_cast<Dominus*>(glfwGetWindowUserPointer(window));
+	DominusEngine* app = reinterpret_cast<DominusEngine*>(glfwGetWindowUserPointer(window));
 	app->recreateSwapChain();
 }
 
-void Dominus::glfwErrorCallback(int error, const char * description)
+std::vector<const char*> DominusEngine::getRequiredExtensions()
+{
+	uint32_t glfwExtensionCount = 0;
+	const char** glfwExtensions;
+	std::vector<const char*> extensions;
+
+	std::cout << "Retrieving available GLFW Vulkan extensions" << std::endl;
+
+	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+	std::cout << "Available GLFW extensions (" << glfwExtensionCount << ") :" << std::endl;
+
+	for (uint32_t i = 0; i < glfwExtensionCount; i++)
+	{
+		std::cout << "\t" << glfwExtensions[i] << std::endl;
+		extensions.push_back(glfwExtensions[i]);
+	}
+
+	if (enableValidationLayers)
+		extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+
+	return extensions;
+}
+
+void DominusEngine::glfwErrorCallback(int error, const char * description)
 {
 	puts(description);
 }
 
-void Dominus::destroyDebugReportCallbackEXT(VkInstance aInstance, VkDebugReportCallbackEXT aCallback, const VkAllocationCallbacks * aAllocator)
+void DominusEngine::destroyDebugReportCallbackEXT(VkInstance aInstance, VkDebugReportCallbackEXT aCallback, const VkAllocationCallbacks * aAllocator)
 {
 	std::cout << "destroying vulkan debug callback function" << std::endl;
 
@@ -1540,7 +1490,7 @@ void Dominus::destroyDebugReportCallbackEXT(VkInstance aInstance, VkDebugReportC
 		func(aInstance, aCallback, aAllocator);
 }
 
-VkResult Dominus::createDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback)
+VkResult DominusEngine::createDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback)
 {
 	std::cout << "Creating vulkan debug callback function" << std::endl;
 
@@ -1552,7 +1502,7 @@ VkResult Dominus::createDebugReportCallbackEXT(VkInstance instance, const VkDebu
 		return VK_ERROR_EXTENSION_NOT_PRESENT;
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL Dominus::debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char * layerPrefix, const char * msg, void * userData)
+VKAPI_ATTR VkBool32 VKAPI_CALL DominusEngine::debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char * layerPrefix, const char * msg, void * userData)
 {
 	std::cerr << "Error : " << code << " at " << location << " - validation layer: " << msg << std::endl;
 

@@ -1,7 +1,8 @@
 #pragma once
 #include "DominusBuffer.h"
-#include <vulkan\vulkan.hpp>
+
 #include <vector>
+#include <vulkan\vulkan.hpp>
 
 class DominusDevice
 {
@@ -44,8 +45,8 @@ public:
 
 	struct 
 	{
-		uint32_t graphics;
-		uint32_t present;
+		int32_t graphics;
+		int32_t present;
 	} queueFamilyIndices;
 
 	DominusDevice();
@@ -55,9 +56,25 @@ public:
 	// Attempt to create logical device
 	VkResult createLogicalDevice(const VkPhysicalDeviceFeatures enableFeatures, const std::vector<const char*> enableExtensionsName, const VkQueueFlags queue);
 
-	VkResult createBuffer(DominusBuffer& buffer);
+	// Create default buffer
+	//DominusBuffer createBuffer(DominusBuffer& buffer);
 
+	// Create buffer with predefined settings
 	VkResult createBuffer(DominusBuffer& buffer, const VkDeviceSize size, const VkBufferUsageFlags usageFlags, const VkMemoryPropertyFlags memoryPropertyFlags);
+
+	// Copy buffer from source to destination using specified queue and VkBufferCopy
+	VkResult copyBuffer(DominusBuffer& source, DominusBuffer& destination, const VkBufferCopy& copyRegion, const VkQueue& queue);
+
+	// Create command buffer
+	// Default command buffer level defaults to primary
+	void createCommandBuffer(VkCommandBuffer& commandBuffer, const VkCommandBufferLevel& level = VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+	// Submits command buffer to queue
+	VkResult submitCommandBuffer(VkCommandBuffer& commandBuffer, const VkQueue& queue);
+
+	// Create VkFence
+	// Fence flags default to unsignaled VK_NULL_HANDLE
+	VkFence createFence(const VkFenceCreateFlags flags = VK_NULL_HANDLE);
 
 	// Query for swap chain support
 	void querySwapChainSupport(const VkSurfaceKHR& surface);
@@ -68,11 +85,11 @@ public:
 	// Returns first queue that supports surface presentation
 	int32_t getQueueFamilyIndexPresentation(const VkSurfaceKHR& surface);
 
-	// Check if extension is supported by the device
-	bool isExtensionSupported(const char* extensionName);
-
 	// Check if memory type provided is supported by device
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
+	// Check if extension is supported by the device
+	bool isExtensionSupported(const char* extensionName);
 
 	// Typecast to VkDevice
 	operator VkDevice();

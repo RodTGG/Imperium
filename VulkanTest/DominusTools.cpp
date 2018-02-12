@@ -1,5 +1,11 @@
 #include "DominusTools.h"
 
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <unordered_map>
+
 DominusTools::DominusTools()
 {
 }
@@ -28,11 +34,6 @@ DominusTools::~DominusTools()
 //
 //	return buffer;
 //}
-
-bool DominusTools::hasStencilComponent(VkFormat format)
-{
-	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
-}
 
 VkShaderModule DominusTools::loadShader(const VkDevice & device, const std::string & filePath)
 {
@@ -143,3 +144,64 @@ std::string DominusTools::surfaceFormatToString(const VkSurfaceFormatKHR surface
 
 	return result;
 }
+
+//DominusModel DominusTools::loadModelFromFile(const std::string fPath)
+//{
+//	DominusModel result;
+//
+//	tinyobj::attrib_t attrib;
+//	std::vector<tinyobj::shape_t> shapes;
+//	std::vector<tinyobj::material_t> materials;
+//	std::string err;
+//
+//	std::cout << "Loading model " << fPath << std::endl;
+//
+//	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, fPath.c_str()))
+//		throw std::runtime_error(err);
+//
+//	// Used to de-duplicate vertices that are in the same positions
+//	std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
+//
+//	for (const auto& shape : shapes)
+//	{
+//		for (const auto& index : shape.mesh.indices)
+//		{
+//			Vertex vertex = {};
+//
+//			vertex.pos = {
+//				attrib.vertices[3 * index.vertex_index + 0],
+//				attrib.vertices[3 * index.vertex_index + 1],
+//				attrib.vertices[3 * index.vertex_index + 2]
+//			};
+//
+//			vertex.texCoord = {
+//				attrib.texcoords[2 * index.texcoord_index + 0],
+//				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+//			};
+//
+//			vertex.color = {
+//				1.0f, 1.0f, 1.0f
+//			};
+//
+//			// Store unique vertices
+//			if (uniqueVertices.count(vertex) == 0)
+//			{
+//				uniqueVertices[vertex] = static_cast<uint32_t>(result.vertices.size());
+//				result.vertices.push_back(vertex);
+//			}
+//
+//			// Simple pushback
+//			// vertices.push_back(vertex);
+//			
+//			// Push back indices to unique vertex
+//			result.indices.push_back(uniqueVertices[vertex]);
+//
+//			// Simple pushback
+//			// indices.push_back(static_cast<uint32_t>(indices.size()));
+//		}
+//	}
+//
+//	std::cout << "Loaded " << uniqueVertices.size() << " vertices" << std::endl;
+//
+//	return result;
+//}

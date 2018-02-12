@@ -4,14 +4,30 @@
 class DominusBuffer
 {
 public:
+	// TODO Use pointer to device instead of local copy
+
+	// Logical VkDevice
 	VkDevice device;
+
+	// VkBuffer
 	VkBuffer buffer = VK_NULL_HANDLE;
+
+	// VkDeviceMemory pointer to buffer memory
 	VkDeviceMemory bufferMemory = VK_NULL_HANDLE;
-	VkDeviceSize size = 0;
-	VkDeviceSize offset = 0;
+
+	// Buffer descriptor info
 	VkDescriptorBufferInfo descriptor;
+
+	// Buffer creation size
+	VkDeviceSize bufferSize = 0;
+	
+	// Buffer creation usage flags
 	VkBufferUsageFlags usageFlags;
+	
+	// Buffer creation memory property flags
 	VkMemoryPropertyFlags memoryPropertyFlags;
+	
+	// Generic pointer to data
 	void* pData = nullptr;
 
 	DominusBuffer();
@@ -19,7 +35,7 @@ public:
 	~DominusBuffer();
 	
 	// Bind buffer to physical device
-	void bind();
+	void bind(VkDeviceSize offset = 0);
 
 	// Map buffer and buffer memory to device
 	void map();
@@ -28,13 +44,13 @@ public:
 	void setDescriptor(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);
 
 	// Copy memory to destination
-	void copyTo(void* dest);
+	void copyTo(void* src);
 
 	// Map buffer and memory to device, copy to destination and unmap
-	void transfer(void* dest);
+	void transfer(void* src);
 
 	// Unmap buffer memory 
-	void unmapBuffer();
+	void unmap();
 
 	// Destroy buffer and free buffer memory
 	void destroy();
