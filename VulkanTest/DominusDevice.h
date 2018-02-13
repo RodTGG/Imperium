@@ -63,18 +63,18 @@ public:
 	VkResult createBuffer(DominusBuffer& buffer, const VkDeviceSize size, const VkBufferUsageFlags usageFlags, const VkMemoryPropertyFlags memoryPropertyFlags);
 
 	// Copy buffer from source to destination using specified queue and VkBufferCopy
-	VkResult copyBuffer(DominusBuffer& source, DominusBuffer& destination, const VkBufferCopy& copyRegion, const VkQueue& queue);
+	VkResult copyBuffer(DominusBuffer& source, DominusBuffer& destination, VkDeviceSize size, VkQueue& queue);
 
 	// Create command buffer
 	// Default command buffer level defaults to primary
-	void createCommandBuffer(VkCommandBuffer& commandBuffer, const VkCommandBufferLevel& level = VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	//void createCommandBuffer(VkCommandBuffer& commandBuffer, const VkCommandBufferLevel& level = VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
 	// Submits command buffer to queue
-	VkResult submitCommandBuffer(VkCommandBuffer& commandBuffer, const VkQueue& queue);
+	//VkResult submitCommandBuffer(VkCommandBuffer& commandBuffer, VkQueue& queue);
 
 	// Create VkFence
 	// Fence flags default to unsignaled VK_NULL_HANDLE
-	VkFence createFence(const VkFenceCreateFlags flags = VK_NULL_HANDLE);
+	//VkFence createFence(const VkFenceCreateFlags flags = 0);
 
 	// Query for swap chain support
 	void querySwapChainSupport(const VkSurfaceKHR& surface);
@@ -96,6 +96,9 @@ public:
 
 	// Overload << Operator
 	friend std::ostream& operator<<(std::ostream& os, const DominusDevice& device);
+
+	VkCommandBuffer beginSingleTimeCommands();
+	void endSingleTimeCommands(VkCommandBuffer commandBuffer, VkQueue queue);
 private:
 };
 

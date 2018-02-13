@@ -680,16 +680,12 @@ void DominusEngine::createVertexBuffer()
 
 	std::cout << "Creating vertex buffer" << std::endl;
 
-	VkDeviceSize bufferSize;
+	VkDeviceSize bufferSize = sceneModels[0]->vertices.size() * sizeof(sceneModels[0]->vertices[0]);
 	//VkDeviceSize vertexSize = sizeof(sceneModels[0]->vertices[0]);
 	//VkDeviceSize testSize = sizeof(glm::vec3);
 
 	/*for (auto model : sceneModels)
 		bufferSize += model->vertices.size();*/
-
-	bufferSize = sceneModels[0]->vertices.size() * sizeof(sceneModels[0]->vertices[0]);
-
-	//bufferSize *= vertexSize;
 
 	DominusBuffer stagingBuffer;
 	gDevice.createBuffer(stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -697,11 +693,8 @@ void DominusEngine::createVertexBuffer()
 	//for (auto model : sceneModels)
 	stagingBuffer.transfer(sceneModels[0]->vertices.data());
 
-	VkBufferCopy bufferCopy;
-	bufferCopy.size = bufferSize;
-
 	gDevice.createBuffer(vertexBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	gDevice.copyBuffer(stagingBuffer, vertexBuffer, bufferCopy, gGraphicsQueue);
+	gDevice.copyBuffer(stagingBuffer, vertexBuffer, bufferSize, gGraphicsQueue);
 }
 
 void DominusEngine::createIndexBuffer()
@@ -723,11 +716,8 @@ void DominusEngine::createIndexBuffer()
 	gDevice.createBuffer(stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	stagingBuffer.transfer(sceneModels[0]->indices.data());
 
-	VkBufferCopy bufferCopy;
-	bufferCopy.size = bufferSize;
-
 	gDevice.createBuffer(indexBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	gDevice.copyBuffer(stagingBuffer, indexBuffer, bufferCopy, gGraphicsQueue);
+	gDevice.copyBuffer(stagingBuffer, indexBuffer, bufferSize, gGraphicsQueue);
 }
 
 
@@ -1181,9 +1171,9 @@ void DominusEngine::transitionImageLayout(VkImage image, VkFormat format, VkImag
 
 	VkPipelineStageFlags srcStage;
 	VkPipelineStageFlags dstStage;
-	VkCommandBuffer commandBuffer;
+	VkCommandBuffer commandBuffer = gDevice.beginSingleTimeCommands();
 	
-	gDevice.createCommandBuffer(commandBuffer);
+	//gDevice.createCommandBuffer(commandBuffer);
 
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1234,15 +1224,17 @@ void DominusEngine::transitionImageLayout(VkImage image, VkFormat format, VkImag
 		throw std::runtime_error("Unsupported layout transition!");
 
 	vkCmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-	gDevice.submitCommandBuffer(commandBuffer, gGraphicsQueue);
+	//gDevice.submitCommandBuffer(commandBuffer, gGraphicsQueue);
+
+	gDevice.endSingleTimeCommands(commandBuffer, gGraphicsQueue);
 }
 
 void DominusEngine::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
 {
 	std::cout << "Copying buffer to image" << std::endl;
 
-	VkCommandBuffer commandBuffer;
-	gDevice.createCommandBuffer(commandBuffer);
+	VkCommandBuffer commandBuffer = gDevice.beginSingleTimeCommands();
+	//gDevice.createCommandBuffer(commandBuffer);
 
 	VkBufferImageCopy region = {};
 	region.bufferOffset = 0;
@@ -1260,7 +1252,8 @@ void DominusEngine::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t w
 
 	vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-	gDevice.submitCommandBuffer(commandBuffer, gGraphicsQueue);
+	//gDevice.submitCommandBuffer(commandBuffer, gGraphicsQueue);
+	gDevice.endSingleTimeCommands(commandBuffer, gGraphicsQueue);
 }
 
 VkFormat DominusEngine::findDepthFormat()

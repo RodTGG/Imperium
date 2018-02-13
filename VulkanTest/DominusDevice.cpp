@@ -167,79 +167,88 @@ VkResult DominusDevice::createBuffer(DominusBuffer& buffer, const VkDeviceSize s
 	return VK_SUCCESS;
 }
 
-VkResult DominusDevice::copyBuffer(DominusBuffer & aSource, DominusBuffer & aDestination, const VkBufferCopy& copyRegion, const VkQueue& queue)
+VkResult DominusDevice::copyBuffer(DominusBuffer & aSource, DominusBuffer & aDestination, VkDeviceSize size, VkQueue& queue)
 {
-	VkCommandBuffer cmdBuffer;
+	VkCommandBuffer cmdBuffer = beginSingleTimeCommands();
 
 	std::cout << "Copying buffer" << std::endl;
 
-	createCommandBuffer(cmdBuffer);
+	VkBufferCopy copyRegion = {};
+	copyRegion.size = size;
+
 	vkCmdCopyBuffer(cmdBuffer, aSource.buffer, aDestination.buffer, 1, &copyRegion);
-	submitCommandBuffer(cmdBuffer, queue);
+	
+	endSingleTimeCommands(cmdBuffer, queue);
 
 	return VK_SUCCESS;
 }
 
-void DominusDevice::createCommandBuffer(VkCommandBuffer& commandBuffer, const VkCommandBufferLevel & level)
-{
-	std::cout << "Creating command buffer" << std::endl;
+//void DominusDevice::createCommandBuffer(VkCommandBuffer& commandBuffer, const VkCommandBufferLevel & level)
+//{
+//	std::cout << "Creating command buffer" << std::endl;
+//
+//	VkCommandBufferAllocateInfo allocInfo = {};
+//	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+//	allocInfo.level = level;
+//	allocInfo.commandPool = graphicsCommandPool;
+//	allocInfo.commandBufferCount = 1;
+//
+//	if (vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer) != VK_SUCCESS)
+//		throw std::runtime_error("Failed to create command buffer");
+//
+//	VkCommandBufferBeginInfo beginInfo = {};
+//	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+//	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+//
+//	if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+//		throw std::runtime_error("Failed to begin command buffer");
+//}
 
-	VkCommandBufferAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.level = level;
-	allocInfo.commandPool = graphicsCommandPool;
-	allocInfo.commandBufferCount = 1;
+//VkResult DominusDevice::submitCommandBuffer(VkCommandBuffer & commandBuffer, VkQueue & queue)
+//{
+//	std::cout << "Submitting commands" << std::endl;
+//
+//	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+//		throw std::runtime_error("Failed to end command buffer");
+//
+//	VkSubmitInfo submitInfo = {};
+//	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+//	submitInfo.commandBufferCount = 1;
+//	submitInfo.pCommandBuffers = &commandBuffer;
+//
+//	VkFence cmdFence = createFence();
+//
+//	if (vkQueueSubmit(queue, 1, &submitInfo, cmdFence) != VK_SUCCESS)
+//		throw std::runtime_error("Failed to submit to queue");
+//
+//	while (true) 
+//	{
+//		if (vkWaitForFences(logicalDevice, 1, &cmdFence, VK_TRUE, 10000000) == VK_SUCCESS)
+//			break;
+//	}
+//
+//	vkDestroyFence(logicalDevice, cmdFence, nullptr);
+//
+//	vkDeviceWaitIdle(logicalDevice);
+//
+//	vkFreeCommandBuffers(logicalDevice, graphicsCommandPool, 1, &commandBuffer);
+//
+//	return VK_SUCCESS;
+//}
 
-	if (vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create command buffer");
-
-	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-		throw std::runtime_error("Failed to begin command buffer");
-}
-
-VkResult DominusDevice::submitCommandBuffer(VkCommandBuffer & commandBuffer, const VkQueue & queue)
-{
-	std::cout << "Submitting commands" << std::endl;
-
-	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-		throw std::runtime_error("Failed to end command buffer");
-
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
-
-	VkFence cmdFence = createFence();
-
-	if (vkQueueSubmit(queue, 1, &submitInfo, cmdFence) != VK_SUCCESS)
-		throw std::runtime_error("Failed to submit to queue");
-
-	if (vkWaitForFences(logicalDevice, 1, &cmdFence, VK_FALSE, UINT64_MAX) != VK_SUCCESS)
-		throw std::runtime_error("Failed to wait for fences");
-
-	vkDestroyFence(logicalDevice, cmdFence, nullptr);
-	vkFreeCommandBuffers(logicalDevice, graphicsCommandPool, 1, &commandBuffer);
-
-	return VK_SUCCESS;
-}
-
-VkFence DominusDevice::createFence(const VkFenceCreateFlags flags)
-{
-	VkFence result;
-
-	VkFenceCreateInfo fenceInfo = {};
-	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = flags;
-
-	if (vkCreateFence(logicalDevice, &fenceInfo, nullptr, &result) != VK_SUCCESS)
-		throw std::runtime_error("Failed to crate VkFence");
-
-	return result;
-}
+//VkFence DominusDevice::createFence(const VkFenceCreateFlags flags)
+//{
+//	VkFence result;
+//
+//	VkFenceCreateInfo fenceInfo = {};
+//	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+//	fenceInfo.flags = flags;
+//
+//	if (vkCreateFence(logicalDevice, &fenceInfo, nullptr, &result) != VK_SUCCESS)
+//		throw std::runtime_error("Failed to crate VkFence");
+//
+//	return result;
+//}
 
 void DominusDevice::querySwapChainSupport(const VkSurfaceKHR& surface)
 {
@@ -318,6 +327,41 @@ uint32_t DominusDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlag
 DominusDevice::operator VkDevice()
 {
 	return logicalDevice;
+}
+
+VkCommandBuffer DominusDevice::beginSingleTimeCommands()
+{
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandPool = graphicsCommandPool;
+	allocInfo.commandBufferCount = 1;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	return commandBuffer;
+}
+
+void DominusDevice::endSingleTimeCommands(VkCommandBuffer commandBuffer, VkQueue queue)
+{
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(queue);
+
+	vkFreeCommandBuffers(logicalDevice, graphicsCommandPool, 1, &commandBuffer);
 }
 
 std::ostream & operator<<(std::ostream & os, const DominusDevice & device)
