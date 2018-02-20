@@ -52,8 +52,9 @@ private:
 
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;
-	//std::vector<uint32_t> indices;
 	std::vector<DominusModel*> sceneModels;
+	std::vector<Vertex> sceneVertices;
+	std::vector<uint32_t> sceneIndices;
 
 	DominusCamera camera;
 	DominusDevice gDevice;
@@ -73,8 +74,15 @@ private:
 	VkRenderPass gRenderPass;
 	VkDescriptorSetLayout descriptionSetLayout;
 	VkPipelineLayout gPipelineLayout;
-	VkPipeline gGraphicsPipeline;
-	VkPipeline gGraphicsPipeline2;
+
+	enum pipelineModes 
+	{
+		SOLID,
+		LINE,
+		POINT
+	};
+
+	std::array<VkPipeline, 3> pipelines;
 
 	DominusBuffer vertexBuffer;
 	DominusBuffer indexBuffer;
@@ -117,7 +125,7 @@ private:
 	void loadModels();
 	void createVertexBuffer();
 	void createIndexBuffer();
-	void createCommandBuffers();
+	void createCommandBuffers(pipelineModes pipelineMode = pipelineModes::SOLID);
 	void createDescriptorPool();
 	void createDescriptorSet();
 	void createSempahores();

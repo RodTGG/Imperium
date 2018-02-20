@@ -183,72 +183,19 @@ VkResult DominusDevice::copyBuffer(DominusBuffer & aSource, DominusBuffer & aDes
 	return VK_SUCCESS;
 }
 
-//void DominusDevice::createCommandBuffer(VkCommandBuffer& commandBuffer, const VkCommandBufferLevel & level)
-//{
-//	std::cout << "Creating command buffer" << std::endl;
-//
-//	VkCommandBufferAllocateInfo allocInfo = {};
-//	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-//	allocInfo.level = level;
-//	allocInfo.commandPool = graphicsCommandPool;
-//	allocInfo.commandBufferCount = 1;
-//
-//	if (vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer) != VK_SUCCESS)
-//		throw std::runtime_error("Failed to create command buffer");
-//
-//	VkCommandBufferBeginInfo beginInfo = {};
-//	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-//	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-//
-//	if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-//		throw std::runtime_error("Failed to begin command buffer");
-//}
+VkFence DominusDevice::createFence(const VkFenceCreateFlags flags)
+{
+	VkFence result;
 
-//VkResult DominusDevice::submitCommandBuffer(VkCommandBuffer & commandBuffer, VkQueue & queue)
-//{
-//	std::cout << "Submitting commands" << std::endl;
-//
-//	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-//		throw std::runtime_error("Failed to end command buffer");
-//
-//	VkSubmitInfo submitInfo = {};
-//	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-//	submitInfo.commandBufferCount = 1;
-//	submitInfo.pCommandBuffers = &commandBuffer;
-//
-//	VkFence cmdFence = createFence();
-//
-//	if (vkQueueSubmit(queue, 1, &submitInfo, cmdFence) != VK_SUCCESS)
-//		throw std::runtime_error("Failed to submit to queue");
-//
-//	while (true) 
-//	{
-//		if (vkWaitForFences(logicalDevice, 1, &cmdFence, VK_TRUE, 10000000) == VK_SUCCESS)
-//			break;
-//	}
-//
-//	vkDestroyFence(logicalDevice, cmdFence, nullptr);
-//
-//	vkDeviceWaitIdle(logicalDevice);
-//
-//	vkFreeCommandBuffers(logicalDevice, graphicsCommandPool, 1, &commandBuffer);
-//
-//	return VK_SUCCESS;
-//}
+	VkFenceCreateInfo fenceInfo = {};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = flags;
 
-//VkFence DominusDevice::createFence(const VkFenceCreateFlags flags)
-//{
-//	VkFence result;
-//
-//	VkFenceCreateInfo fenceInfo = {};
-//	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-//	fenceInfo.flags = flags;
-//
-//	if (vkCreateFence(logicalDevice, &fenceInfo, nullptr, &result) != VK_SUCCESS)
-//		throw std::runtime_error("Failed to crate VkFence");
-//
-//	return result;
-//}
+	if (vkCreateFence(logicalDevice, &fenceInfo, nullptr, &result) != VK_SUCCESS)
+		throw std::runtime_error("Failed to crate VkFence");
+
+	return result;
+}
 
 void DominusDevice::querySwapChainSupport(const VkSurfaceKHR& surface)
 {
@@ -353,13 +300,28 @@ void DominusDevice::endSingleTimeCommands(VkCommandBuffer commandBuffer, VkQueue
 {
 	vkEndCommandBuffer(commandBuffer);
 
+	VkFence cmdFence = createFence();
+
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(queue);
+	vkQueueSubmit(queue, 1, &submitInfo, cmdFence);
+	//vkQueueWaitIdle(queue);
+
+	/*if (vkWaitForFences(logicalDevice, 1, &cmdFence, VK_TRUE, 10000) != VK_SUCCESS)
+		throw std::runtime_error("Failed to wait for fence");
+*/
+	vkWaitForFences(logicalDevice, 1, &cmdFence, VK_TRUE, 10000);
+
+	while (true)
+	{
+		if (vkGetFenceStatus(logicalDevice, cmdFence) == VK_SUCCESS)
+			break;
+	}
+
+	vkDestroyFence(logicalDevice, cmdFence, nullptr);
 
 	vkFreeCommandBuffers(logicalDevice, graphicsCommandPool, 1, &commandBuffer);
 }
@@ -394,12 +356,11 @@ std::ostream & operator<<(std::ostream & os, const DominusDevice & device)
 	os << "Supported formats (" << device.surfaceFormats.size() << ") [Format, colorSpace]" << std::endl;
 
 	for (auto format : device.surfaceFormats)
-		os << "\t" << DominusTools::surfaceFormatToString(format) << std::endl;
+		os << "\t" << DominusTools::vkSurfaceFormatToString(format) << std::endl;
 
 	os << "Surface present modes (" << device.surfacePresentModes.size() << ")" << std::endl;
 
 	for (auto presentMode : device.surfacePresentModes)
-
 		os << "\t" << DominusTools::presentModeToString(presentMode) << std::endl;
 
 

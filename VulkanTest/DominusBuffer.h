@@ -49,6 +49,8 @@ public:
 	// Map buffer and memory to device, copy to destination and unmap
 	void transfer(void* src);
 
+	void flush();
+
 	// Unmap buffer memory 
 	void unmap();
 

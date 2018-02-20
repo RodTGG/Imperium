@@ -70,7 +70,7 @@ VkShaderModule DominusTools::loadShader(const VkDevice & device, const std::stri
 	return shaderModule;
 }
 
-std::string DominusTools::queueFamilyFlagToString(const VkQueueFamilyProperties queueFamily)
+std::string DominusTools::queueFamilyFlagToString(const VkQueueFamilyProperties& queueFamily)
 {
 	std::string result;
 
@@ -86,7 +86,7 @@ std::string DominusTools::queueFamilyFlagToString(const VkQueueFamilyProperties 
 	return result;
 }
 
-char* DominusTools::presentModeToString(const VkPresentModeKHR presentMode)
+char* DominusTools::presentModeToString(const VkPresentModeKHR& presentMode)
 {
 	switch (presentMode)
 	{
@@ -108,7 +108,7 @@ char* DominusTools::presentModeToString(const VkPresentModeKHR presentMode)
 	}
 }
 
-std::string DominusTools::surfaceFormatToString(const VkSurfaceFormatKHR surfaceFormat)
+std::string DominusTools::vkSurfaceFormatToString(const VkSurfaceFormatKHR& surfaceFormat)
 {
 	std::string result;
 
@@ -145,63 +145,95 @@ std::string DominusTools::surfaceFormatToString(const VkSurfaceFormatKHR surface
 	return result;
 }
 
-//DominusModel DominusTools::loadModelFromFile(const std::string fPath)
-//{
-//	DominusModel result;
-//
-//	tinyobj::attrib_t attrib;
-//	std::vector<tinyobj::shape_t> shapes;
-//	std::vector<tinyobj::material_t> materials;
-//	std::string err;
-//
-//	std::cout << "Loading model " << fPath << std::endl;
-//
-//	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, fPath.c_str()))
-//		throw std::runtime_error(err);
-//
-//	// Used to de-duplicate vertices that are in the same positions
-//	std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
-//
-//	for (const auto& shape : shapes)
-//	{
-//		for (const auto& index : shape.mesh.indices)
-//		{
-//			Vertex vertex = {};
-//
-//			vertex.pos = {
-//				attrib.vertices[3 * index.vertex_index + 0],
-//				attrib.vertices[3 * index.vertex_index + 1],
-//				attrib.vertices[3 * index.vertex_index + 2]
-//			};
-//
-//			vertex.texCoord = {
-//				attrib.texcoords[2 * index.texcoord_index + 0],
-//				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-//			};
-//
-//			vertex.color = {
-//				1.0f, 1.0f, 1.0f
-//			};
-//
-//			// Store unique vertices
-//			if (uniqueVertices.count(vertex) == 0)
-//			{
-//				uniqueVertices[vertex] = static_cast<uint32_t>(result.vertices.size());
-//				result.vertices.push_back(vertex);
-//			}
-//
-//			// Simple pushback
-//			// vertices.push_back(vertex);
-//			
-//			// Push back indices to unique vertex
-//			result.indices.push_back(uniqueVertices[vertex]);
-//
-//			// Simple pushback
-//			// indices.push_back(static_cast<uint32_t>(indices.size()));
-//		}
-//	}
-//
-//	std::cout << "Loaded " << uniqueVertices.size() << " vertices" << std::endl;
-//
-//	return result;
-//}
+std::string DominusTools::vkResultToString(const VkResult & vkResult)
+{
+	std::string result;
+
+	switch (vkResult)
+	{
+	case VK_SUCCESS:
+		result = "SUCCESS";
+		break;
+	case VK_NOT_READY:
+		result = "NOT READY";
+		break;
+	case VK_TIMEOUT:
+		result = "TIMEOUT";
+		break;
+	case VK_EVENT_SET:
+		result = "EVENT SET";
+		break;
+	case VK_EVENT_RESET:
+		result = "EVENT RESET";
+		break;
+	case VK_INCOMPLETE:
+		result = "EVENT INCOMPLETE";
+		break;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:
+		result = "OUT OF HOST MEMORY";
+		break;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:
+		result = "OUT OF DEVICE MEMORY";
+		break;
+	case VK_ERROR_INITIALIZATION_FAILED:
+		result = "INITIALIZATION FAILED";
+		break;
+	case VK_ERROR_DEVICE_LOST:
+		result = "DEVICE LOST";
+		break;
+	case VK_ERROR_MEMORY_MAP_FAILED:
+		result = "MEMORY MAP FAILED";
+		break;
+	case VK_ERROR_LAYER_NOT_PRESENT:
+		result = "LAYER NOT PRESENT";
+		break;
+	case VK_ERROR_EXTENSION_NOT_PRESENT:
+		result = "EXTENSION NOT PRESENT";
+		break;
+	case VK_ERROR_FEATURE_NOT_PRESENT:
+		result = "FEATURE NOT PRESENT";
+		break;
+	case VK_ERROR_INCOMPATIBLE_DRIVER:
+		result = "INCOMPATIBLE DRIVER";
+		break;
+	case VK_ERROR_TOO_MANY_OBJECTS:
+		result = "TOO MANY OBJECTS";
+		break;
+	case VK_ERROR_FORMAT_NOT_SUPPORTED:
+		result = "FORMAT NOT SUPPORTED";
+		break;
+	case VK_ERROR_FRAGMENTED_POOL:
+		break;
+	case VK_ERROR_SURFACE_LOST_KHR:
+		result = "SURFACE LOST KHR";
+		break;
+	case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
+		break;
+	case VK_SUBOPTIMAL_KHR:
+		result = "SUBOPTIMAL KHR";
+		break;
+	case VK_ERROR_OUT_OF_DATE_KHR:
+		result = "OUT OF DATE KHR";
+		break;
+	case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
+		break;
+	case VK_ERROR_VALIDATION_FAILED_EXT:
+		break;
+	case VK_ERROR_INVALID_SHADER_NV:
+		break;
+	case VK_ERROR_OUT_OF_POOL_MEMORY_KHR:
+		break;
+	case VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR:
+		break;
+	case VK_ERROR_NOT_PERMITTED_EXT:
+		break;
+	case VK_RESULT_RANGE_SIZE:
+		break;
+	case VK_RESULT_MAX_ENUM:
+		break;
+	default:
+		break;
+	}
+
+	return result;
+}

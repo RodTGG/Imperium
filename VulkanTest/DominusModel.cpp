@@ -14,7 +14,7 @@ DominusModel::DominusModel(DominusDevice& aDevice, DominusBuffer& vertexBuffer, 
 	vBuffer = &vertexBuffer;
 	device = &aDevice;
 	position = aPosition;
-	rotation = glm::vec3(1.0f);
+	rotation = glm::vec3(0.0f);
 	scaling = glm::vec3(1.0f);
 	UVScaling = glm::vec2(1.0f);
 }
@@ -83,6 +83,11 @@ bool DominusModel::loadFromFile(const std::string fPath)
 
 std::ostream & operator<<(std::ostream & os, DominusModel & dModel)
 {
+	os << "World info" << std::endl;
+	os << "\tLocation x=" << dModel.position.x << " y=" << dModel.position.y << " z=" << dModel.position.z << std::endl;
+	os << "\tRotation x=" << dModel.rotation.x << " y=" << dModel.rotation.y << " z=" << dModel.rotation.z << std::endl;
+	os << "\tScaling x=" << dModel.scaling.x << " y=" << dModel.scaling.y << " z=" << dModel.scaling.z << std::endl;
+	os << "\tUVScaling x=" << dModel.UVScaling.x << " y=" << dModel.UVScaling.y << std::endl;
 	os << "Model info" << std::endl;
 	os << "\tFile path: " << dModel.filePath << std::endl;
 	os << "\tUnique Vertices: " << dModel.vertices.size() << std::endl;

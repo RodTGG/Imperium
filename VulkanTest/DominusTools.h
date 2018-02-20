@@ -14,14 +14,15 @@ public:
 	static VkShaderModule loadShader(const VkDevice& device, const std::string& filePath);
 
 	// Returns custom name for queue family property queue flags
-	static std::string queueFamilyFlagToString(const VkQueueFamilyProperties queueFamily);
+	static std::string queueFamilyFlagToString(const VkQueueFamilyProperties& queueFamily);
 
 	// Return custom name for present mode object
-	static char* presentModeToString(const VkPresentModeKHR presentMode);
+	static char* presentModeToString(const VkPresentModeKHR& presentMode);
 	
 	// Return custom name for surface format object
-	static std::string surfaceFormatToString(const VkSurfaceFormatKHR surfaceFormat);
+	static std::string vkSurfaceFormatToString(const VkSurfaceFormatKHR& surfaceFormat);
 
-	//static DominusModel loadModelFromFile(const std::string fPath);
+	// Returns string containing VkError type
+	static std::string vkResultToString(const VkResult& vkResult);
 private:
 };

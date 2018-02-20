@@ -1,4 +1,5 @@
 #include "DominusEngine.h"
+#include "Vertex.h"
 #include <iostream>
 #include <set>
 #include <algorithm>
@@ -77,7 +78,10 @@ void DominusEngine::initWindow()
 
 	gWindow = glfwCreateWindow(WIDTH, HEIGHT, "VulkanTestWindow", nullptr, nullptr);
 	glfwSetWindowSizeLimits(gWindow, 100, 100, GLFW_DONT_CARE, GLFW_DONT_CARE);
+
+	// Set window pointer to engine class for retrieval in static methods
 	glfwSetWindowUserPointer(gWindow, this);
+
 	glfwSetWindowSizeCallback(gWindow, onWindowResized);
 	glfwSetKeyCallback(gWindow, onKeyCallback);
 }
@@ -250,7 +254,7 @@ bool DominusEngine::isDeviceSuitable(DominusDevice aDevice)
 		return false;
 	}
 
-	if (!aDevice.features.sampleRateShading) 
+	if (!aDevice.features.sampleRateShading)
 	{
 		std::cout << "Multisampling not supported" << std::endl;
 		return false;
@@ -497,7 +501,7 @@ void DominusEngine::createGraphicsPipeline()
 	colorBlending.blendConstants[2] = 0.0f;					// Optional
 	colorBlending.blendConstants[3] = 0.0f;					// Optional
 
-	VkDynamicState dynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_LINE_WIDTH };
+	VkDynamicState dynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_LINE_WIDTH, VK_DYNAMIC_STATE_SCISSOR };
 
 	VkPipelineDynamicStateCreateInfo dynamicState = {};
 	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -514,6 +518,7 @@ void DominusEngine::createGraphicsPipeline()
 
 	VkGraphicsPipelineCreateInfo pipelineInfo = {};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.flags = VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT;
 	pipelineInfo.stageCount = 2;
 	pipelineInfo.pStages = shaderStages;
 	pipelineInfo.pVertexInputState = &vertexInputInfo;
@@ -521,19 +526,52 @@ void DominusEngine::createGraphicsPipeline()
 	pipelineInfo.pViewportState = &viewportState;
 	pipelineInfo.pRasterizationState = &rasterizer;
 	pipelineInfo.pMultisampleState = &multisampling;
-	pipelineInfo.pDepthStencilState = nullptr;			// Optional
 	pipelineInfo.pColorBlendState = &colorBlending;
-	pipelineInfo.pDynamicState = nullptr;				// Optional
+	pipelineInfo.pDynamicState = VK_NULL_HANDLE;			// Optional
 	pipelineInfo.layout = gPipelineLayout;
 	pipelineInfo.renderPass = gRenderPass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;	// Optional
 	pipelineInfo.basePipelineIndex = -1;				// Optional
-	pipelineInfo.pDepthStencilState = &depthStencil;
+	pipelineInfo.pDepthStencilState = &depthStencil;	// Optional
 
-	if (vkCreateGraphicsPipelines(gDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &gGraphicsPipeline) != VK_SUCCESS)
+	// Pipeline cache for constructing other pipelines
+	VkPipelineCache pipelineCache;
+	VkPipelineCacheCreateInfo pipelineCacheInfo = {};
+	pipelineCacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+	pipelineCacheInfo.pNext = nullptr;
+	pipelineCacheInfo.flags = 0;
+	pipelineCacheInfo.initialDataSize = 0;
+	pipelineCacheInfo.pInitialData = nullptr;
+
+	if (vkCreatePipelineCache(gDevice, &pipelineCacheInfo, nullptr, &pipelineCache) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create pipeline cache");
+
+	std::cout << "\tCraeted pipeline cache" << std::endl;
+
+	if (vkCreateGraphicsPipelines(gDevice, pipelineCache, 1, &pipelineInfo, nullptr, &pipelines[pipelineModes::SOLID]) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
 
+	std::cout << "\tCraeted solid pipeline" << std::endl;
+
+	rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+	pipelineInfo.flags = VK_PIPELINE_CREATE_DERIVATIVE_BIT;
+	pipelineInfo.basePipelineHandle = pipelines[pipelineModes::SOLID];
+	pipelineInfo.basePipelineIndex = -1;
+
+	if (vkCreateGraphicsPipelines(gDevice, pipelineCache, 1, &pipelineInfo, nullptr, &pipelines[pipelineModes::LINE]) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create graphics pipeline!");
+
+	std::cout << "\tCraeted line pipeline" << std::endl;
+
+	rasterizer.polygonMode = VK_POLYGON_MODE_POINT;
+
+	if (vkCreateGraphicsPipelines(gDevice, pipelineCache, 1, &pipelineInfo, nullptr, &pipelines[pipelineModes::POINT]) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create graphics pipeline!");
+
+	std::cout << "\tCraeted point pipeline" << std::endl;
+
+	vkDestroyPipelineCache(gDevice, pipelineCache, nullptr);
 	vkDestroyShaderModule(gDevice, fragShaderModule, nullptr);
 	vkDestroyShaderModule(gDevice, vertShaderModule, nullptr);
 }
@@ -630,70 +668,42 @@ void DominusEngine::createCommandPool()
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = gDevice.queueFamilyIndices.graphics;
-	poolInfo.flags = 0;		// Optional
+	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;		// Optional
 
 	if (vkCreateCommandPool(gDevice, &poolInfo, nullptr, &gDevice.graphicsCommandPool) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create command pool!");
 }
 
-//void Dominus::createVertexBuffer()
-//{
-//	std::cout << "Creating vertex buffer" << std::endl;
-//
-//	VkBufferCopy copyRegion = { 0, sizeof(vertices[0]) * vertices.size(), 0 };
-//
-//	DominusBuffer stagingBuffer = gDevice.createBuffer(copyRegion.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-//	stagingBuffer.transfer(vertices.data());
-//
-//	vertexBuffer = gDevice.createBuffer(copyRegion.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-//	gDevice.copyBuffer(stagingBuffer, vertexBuffer, gGraphicsQueue, copyRegion);
-//}
-
-//void Dominus::createIndexBuffer()
-//{
-//	std::cout << "Creating index buffer" << std::endl;
-//
-//	VkBufferCopy copyRegion = { 0 , sizeof(indices[0]) * indices.size(), 0 };
-//
-//	DominusBuffer stagingBuffer = gDevice.createBuffer(copyRegion.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-//	stagingBuffer.transfer(indices.data());
-//
-//	indexBuffer = DominusBuffer(gDevice, copyRegion.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-//	gDevice.createBuffer(indexBuffer);
-//	gDevice.copyBuffer(stagingBuffer, indexBuffer, gGraphicsQueue, copyRegion);
-//}
-
 void DominusEngine::loadModels()
 {
-	DominusModel* tmp = new DominusModel(gDevice, vertexBuffer, glm::vec3(0.0f));
-	tmp->loadFromFile("meshes/invader.obj");
+	for (auto i = 0; i < 2; i++)
+	{
+		DominusModel* tmp = new DominusModel(gDevice, vertexBuffer, glm::vec3(i * 20));
+		tmp->loadFromFile("meshes/invader.obj");
+		std::cout << *tmp << std::endl;
 
-	std::cout << *tmp << std::endl;
-
-	sceneModels.push_back(tmp);
+		sceneModels.push_back(tmp);
+	}
 }
 
-// TODO Fix memory mapping making vertex data unreadable
 void DominusEngine::createVertexBuffer()
 {
 	// Vertex buffer size needs to be equal to size of all scene component vertex * sizeof(vertex position vector)
 
+	VkDeviceSize bufferSize;
+	DominusBuffer stagingBuffer;
+
 	std::cout << "Creating vertex buffer" << std::endl;
 
-	VkDeviceSize bufferSize = sceneModels[0]->vertices.size() * sizeof(sceneModels[0]->vertices[0]);
-	//VkDeviceSize vertexSize = sizeof(sceneModels[0]->vertices[0]);
-	//VkDeviceSize testSize = sizeof(glm::vec3);
+	for (auto model : sceneModels)
+		sceneVertices.insert(sceneVertices.end(), model->vertices.begin(), model->vertices.end());
 
-	/*for (auto model : sceneModels)
-		bufferSize += model->vertices.size();*/
+	bufferSize = sceneVertices.size() * sizeof(Vertex);
 
-	DominusBuffer stagingBuffer;
 	gDevice.createBuffer(stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	
-	//for (auto model : sceneModels)
-	stagingBuffer.transfer(sceneModels[0]->vertices.data());
-
 	gDevice.createBuffer(vertexBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	stagingBuffer.transfer(sceneVertices.data());
 	gDevice.copyBuffer(stagingBuffer, vertexBuffer, bufferSize, gGraphicsQueue);
 }
 
@@ -701,27 +711,26 @@ void DominusEngine::createIndexBuffer()
 {
 	// Index buffer size must be equal to indices count * sizeof(single index)
 
-	std::cout << "Creating index buffer" << std::endl;
-
 	VkDeviceSize bufferSize;
 	DominusBuffer stagingBuffer;
 
-	/*for (auto model : sceneModels){
-		bufferCopy.size += sizeof(model->indices);
-		indices.insert(indices.end(), model->indices.begin(), model->indices.end());
-	}*/
+	std::cout << "Creating index buffer" << std::endl;
 
-	bufferSize = sceneModels[0]->indices.size() * sizeof(sceneModels[0]->indices[0]);
+	for (auto model : sceneModels)
+		sceneIndices.insert(sceneIndices.end(), model->indices.begin(), model->indices.end());
+
+	bufferSize = sceneIndices.size() * sizeof(uint32_t);
 
 	gDevice.createBuffer(stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	gDevice.createBuffer(indexBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
 	stagingBuffer.transfer(sceneModels[0]->indices.data());
 
-	gDevice.createBuffer(indexBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	gDevice.copyBuffer(stagingBuffer, indexBuffer, bufferSize, gGraphicsQueue);
 }
 
 
-void DominusEngine::createCommandBuffers()
+void DominusEngine::createCommandBuffers(pipelineModes pipelineMode)
 {
 	commandBuffers.resize(gSwapChainFramebuffers.size());
 
@@ -743,7 +752,8 @@ void DominusEngine::createCommandBuffers()
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 		beginInfo.pInheritanceInfo = nullptr;		// Optional.
 
-		vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
+		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)
+			throw std::runtime_error("Failed to begin command buffer");
 
 		std::array<VkClearValue, 2> clearValues = {};
 		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -759,19 +769,9 @@ void DominusEngine::createCommandBuffers()
 		renderPassInfo.pClearValues = clearValues.data();
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gGraphicsPipeline);
-
-		//std::vector<VkBuffer> vBuffers;
-		//std::vector<VkDeviceSize> offsets;
-		//offsets.push_back(0);
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[pipelineMode]);
 
 		VkDeviceSize offsets[1] = { 0 };
-
-		//for (size_t i = 0; i < sceneModels.size(); ++i)
-		//{
-		//	vBuffers.push_back(sceneModels[i]->vBuffer.buffer);
-		//	//offsets.push_back(sizeof(sceneModels[i]->vBuffer.buffer));
-		//}
 
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -1007,8 +1007,10 @@ void DominusEngine::drawFrame()
 		recreateSwapChain();
 		return;
 	}
-	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-		throw std::runtime_error("failed to acquire swap chain image!");
+	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+	{
+		std::string error = "Failed to aquire swap chain image!";
+		throw std::runtime_error(error);
 	}
 
 	VkSubmitInfo submitInfo = {};
@@ -1023,27 +1025,11 @@ void DominusEngine::drawFrame()
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	std::string error = "Failed to submit draw command buffer!";
-	result = vkQueueSubmit(gGraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-
-	switch (result)
+	if ((result = vkQueueSubmit(gGraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)) != VK_SUCCESS)
 	{
-	case VK_SUCCESS:
-		break;
-	case VK_ERROR_OUT_OF_HOST_MEMORY:
-		error += " out of host memory";
+		std::string error = "Failed to submit to queue! ";
+		error.append(DominusTools::vkResultToString(result));
 		throw std::runtime_error(error);
-		break;
-	case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-		error += " out of device memory";
-		throw std::runtime_error(error);
-		break;
-	case VK_ERROR_DEVICE_LOST:
-		error += " lost device";
-		throw std::runtime_error(error);
-		break;
-	default:
-		break;
 	}
 
 	VkPresentInfoKHR presentInfo = {};
@@ -1062,7 +1048,7 @@ void DominusEngine::drawFrame()
 	else if (result != VK_SUCCESS)
 		throw std::runtime_error("failed to present swap chain image!");
 
-	//vkQueueWaitIdle(gPresentQueue);
+	vkQueueWaitIdle(gPresentQueue);
 }
 
 void DominusEngine::recreateSwapChain()
@@ -1089,19 +1075,15 @@ void DominusEngine::cleanupSwapChain()
 	vkDestroyImage(gDevice, depthImage, nullptr);
 	vkFreeMemory(gDevice, depthImageMemory, nullptr);
 
-	for (VkFramebuffer buffer : gSwapChainFramebuffers)
-	{
+	for (auto buffer : gSwapChainFramebuffers)
 		vkDestroyFramebuffer(gDevice, buffer, nullptr);
-	}
-
-	/*for (size_t i = 0; i < gSwapChainFramebuffers.size(); i++) {
-	vkDestroyFramebuffer(gDevice, gSwapChainFramebuffers[i], nullptr);
-	}*/
 
 
 	vkFreeCommandBuffers(gDevice, gDevice.graphicsCommandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-	vkDestroyPipeline(gDevice, gGraphicsPipeline2, nullptr);
-	vkDestroyPipeline(gDevice, gGraphicsPipeline, nullptr);
+
+	for (auto pipeline : pipelines)
+		vkDestroyPipeline(gDevice, pipeline, nullptr);
+
 	vkDestroyPipelineLayout(gDevice, gPipelineLayout, nullptr);
 	vkDestroyRenderPass(gDevice, gRenderPass, nullptr);
 
@@ -1110,10 +1092,6 @@ void DominusEngine::cleanupSwapChain()
 	}
 
 	vkDestroySwapchainKHR(gDevice, gSwapChain, nullptr);
-	/*for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-	vkDestroyImageView(gDevice, swapChainImageViews[i], nullptr);
-	}*/
-
 }
 
 void DominusEngine::updateUniformBuffer()
@@ -1172,7 +1150,7 @@ void DominusEngine::transitionImageLayout(VkImage image, VkFormat format, VkImag
 	VkPipelineStageFlags srcStage;
 	VkPipelineStageFlags dstStage;
 	VkCommandBuffer commandBuffer = gDevice.beginSingleTimeCommands();
-	
+
 	//gDevice.createCommandBuffer(commandBuffer);
 
 	VkImageMemoryBarrier barrier = {};
@@ -1252,7 +1230,6 @@ void DominusEngine::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t w
 
 	vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-	//gDevice.submitCommandBuffer(commandBuffer, gGraphicsQueue);
 	gDevice.endSingleTimeCommands(commandBuffer, gGraphicsQueue);
 }
 
@@ -1428,6 +1405,18 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
 	else if (key == GLFW_KEY_E && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
 		app->camera.translate(glm::vec3(0.0f, 0.0f, -speed * app->deltaTime));
+	}
+	else if (key == GLFW_KEY_1 && action == GLFW_PRESS)
+	{
+		app->createCommandBuffers(pipelineModes::SOLID);
+	}
+	else if (key == GLFW_KEY_2 && action == GLFW_PRESS)
+	{
+		app->createCommandBuffers(pipelineModes::LINE);
+	}
+	else if (key == GLFW_KEY_3 && action == GLFW_PRESS)
+	{
+		app->createCommandBuffers(pipelineModes::POINT);
 	}
 }
 

@@ -70,6 +70,17 @@ void DominusBuffer::transfer(void * src)
 	unmap();
 }
 
+void DominusBuffer::flush()
+{
+	VkMappedMemoryRange mappedRange = {};
+	mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	mappedRange.memory = bufferMemory;
+	mappedRange.size = bufferSize;
+	mappedRange.offset = descriptor.offset;
+
+	vkFlushMappedMemoryRanges(device, 1, &mappedRange);
+}
+
 void DominusBuffer::unmap()
 {
 	//std::cout << "Unmapping memory from device" << std::endl;
