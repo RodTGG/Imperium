@@ -3,16 +3,14 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 #include <glm.hpp>
-#include <gtc/quaternion.hpp>
-#include <gtc/matrix_transform.hpp>
 
 class DominusCamera
 {
 public:
 	glm::mat4 perspective;
 	glm::mat4 view;
-	glm::vec3 rotation = glm::vec3();
-	glm::vec3 position = glm::vec3();
+	glm::vec3 rotation;
+	glm::vec3 position;
 
 	float rotationSpeed = 1.0f;
 	float movementSpeed = 1.0f;

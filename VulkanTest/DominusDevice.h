@@ -43,6 +43,10 @@ public:
 	// Supported device present modes
 	std::vector<VkPresentModeKHR> surfacePresentModes;
 
+	// TODO move queues to device allowing for independent device queues
+	//VkQueue graphicsQueue;
+	//VkQueue presentationQueue;
+
 	struct 
 	{
 		int32_t graphics;

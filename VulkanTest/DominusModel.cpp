@@ -23,6 +23,11 @@ DominusModel::~DominusModel()
 {
 }
 
+void DominusModel::draw(VkCommandBuffer* buffer)
+{
+	vkCmdDrawIndexed(*buffer, indices.size(), 1, 0, vertexOffset, 0);
+}
+
 bool DominusModel::loadFromFile(const std::string fPath)
 {
 	filePath = fPath;

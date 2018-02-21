@@ -1,7 +1,10 @@
 #include "DominusCamera.h"
+#include <gtc/matrix_transform.hpp>
 
 DominusCamera::DominusCamera()
 {
+	position = glm::vec3(0.0f);
+	rotation = glm::vec3(0.0f);
 }
 
 
@@ -14,14 +17,14 @@ void DominusCamera::updateViewMatrix()
 	glm::mat4 rotM = glm::mat4(1.0f);
 	glm::mat4 transM;
 
-	rotM = glm::rotate(rotM, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-	rotM = glm::rotate(rotM, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-	rotM = glm::rotate(rotM, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+	rotM = glm::rotate(rotM, glm::radians(rotation.x), glm::vec3(rotationSpeed, 0.0f, 0.0f));
+	rotM = glm::rotate(rotM, glm::radians(rotation.y), glm::vec3(0.0f, rotationSpeed, 0.0f));
+	rotM = glm::rotate(rotM, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, rotationSpeed));
 
-	transM = glm::translate(glm::mat4(1.0f), position);
+	transM = glm::translate(glm::mat4(1.0f), position * movementSpeed);
 
 	view = transM * rotM;
-	view = glm::lookAt(position, center, glm::vec3(0.0f, 0.0f, 1.0f));
+	//view = glm::lookAt(position, center, glm::vec3(0.0f, 0.0f, 1.0f));
 }
 
 void DominusCamera::setPerspective(float aFov, float aAspect, float aZnear, float aZfar)
@@ -31,12 +34,6 @@ void DominusCamera::setPerspective(float aFov, float aAspect, float aZnear, floa
 	zfar = aZfar;
 	perspective = glm::perspective(glm::radians(fov), aAspect, znear, zfar);
 	perspective[1][1] *= -1;
-
-	//glm::ortho(0.0f, (float)gSwapChainExtent.width, 0.0f, (float)gSwapChainExtent.height, 0.1f, 10.0f);
-	/*ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 10.0f);
-	ubo.proj[1][1] *= -1;*/
 }
 
 void DominusCamera::updateAspectRatio(float aAspect)

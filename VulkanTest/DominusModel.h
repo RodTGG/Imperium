@@ -38,9 +38,14 @@ public:
 	// Path to model file
 	std::string filePath;
 
+	// Offset in vertex buffer
+	uint32_t vertexOffset;
+
 	DominusModel();
 	DominusModel(DominusDevice& device, DominusBuffer& vertexBuffer, const glm::vec3& position);
 	~DominusModel();
+
+	void draw(VkCommandBuffer* buffer);
 
 	// Loads vertices and indices to vector
 	bool loadFromFile(const std::string fPath);

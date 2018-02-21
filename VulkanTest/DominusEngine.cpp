@@ -676,12 +676,18 @@ void DominusEngine::createCommandPool()
 
 void DominusEngine::loadModels()
 {
-	for (auto i = 0; i < 2; i++)
-	{
-		DominusModel* tmp = new DominusModel(gDevice, vertexBuffer, glm::vec3(i * 20));
-		tmp->loadFromFile("meshes/invader.obj");
-		std::cout << *tmp << std::endl;
+	uint32_t vertexOffset = 0;
+	float modelOffset = 0;
 
+	for (auto i = 0; i < 10; i++)
+	{
+		DominusModel* tmp = new DominusModel(gDevice, vertexBuffer, glm::vec3(modelOffset, 0, 0));
+		tmp->vertexOffset = vertexOffset;
+		tmp->loadFromFile("meshes/invader.obj");
+		modelOffset += 20;
+		vertexOffset += 212;
+
+		std::cout << *tmp << std::endl;
 		sceneModels.push_back(tmp);
 	}
 }
@@ -692,6 +698,7 @@ void DominusEngine::createVertexBuffer()
 
 	VkDeviceSize bufferSize;
 	DominusBuffer stagingBuffer;
+	//size_t size;
 
 	std::cout << "Creating vertex buffer" << std::endl;
 
@@ -775,9 +782,14 @@ void DominusEngine::createCommandBuffers(pipelineModes pipelineMode)
 
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
-		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(sceneModels[0]->indices.size()), 1, 0, 0, 0);
+		for (auto model : sceneModels)
+		{
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+			//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(sceneModels[0]->indices.size()), 1, 0, 0, 0);
+			model->draw(&commandBuffers[i]);
+		}
+
 		vkCmdEndRenderPass(commandBuffers[i]);
 
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
@@ -793,8 +805,8 @@ void DominusEngine::createUniformBuffer()
 
 	gDevice.createBuffer(uniformBuffer, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	camera.setTranslation(glm::vec3(0.0f, 40.0f, 0.0f));
-	camera.setPerspective(90.0f, gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.01f, 150.0f);
+	camera.setTranslation(glm::vec3(0.0f, -40.0f, 0.0f));
+	camera.setPerspective(90.0f, gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.01f, 100.0f);
 	camera.setLookAt(glm::vec3(0.0f, 0.0f, 0.0f));
 
 	ubo.model = glm::mat4(1.0f);
@@ -1372,7 +1384,6 @@ VkExtent2D DominusEngine::chooseSwapExtent(const VkSurfaceCapabilitiesKHR & capa
 void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, int action, int mods)
 {
 	DominusEngine* app = reinterpret_cast<DominusEngine*>(glfwGetWindowUserPointer(window));
-	float speed = 0.05f;
 
 #ifdef _DEBUG
 	std::cout << "Input detected: " << (char)key << " - " << action << std::endl;
@@ -1384,27 +1395,27 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
 	}
 	else if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.translate(glm::vec3(0.0f, speed * app->deltaTime, 0.0f));
+		app->camera.translate(glm::vec3(0.0f, app->deltaTime, 0.0f));
 	}
 	else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.translate(glm::vec3(-speed * app->deltaTime, 0.0f, 0.0f));
+		app->camera.translate(glm::vec3(app->deltaTime, 0.0f, 0.0f));
 	}
 	else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.translate(glm::vec3(0.0f, -speed * app->deltaTime, 0.0f));
+		app->camera.translate(glm::vec3(0.0f, app->deltaTime, 0.0f));
 	}
 	else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.translate(glm::vec3(speed * app->deltaTime, 0.0f, 0.0f));
+		app->camera.translate(glm::vec3(app->deltaTime, 0.0f, 0.0f));
 	}
 	else if (key == GLFW_KEY_Q && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.translate(glm::vec3(0.0f, 0.0f, speed * app->deltaTime));
+		app->camera.translate(glm::vec3(0.0f, 0.0f, app->deltaTime));
 	}
 	else if (key == GLFW_KEY_E && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.translate(glm::vec3(0.0f, 0.0f, -speed * app->deltaTime));
+		app->camera.translate(glm::vec3(0.0f, 0.0f, app->deltaTime));
 	}
 	else if (key == GLFW_KEY_1 && action == GLFW_PRESS)
 	{
