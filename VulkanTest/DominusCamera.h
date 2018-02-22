@@ -3,6 +3,7 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 #include <glm.hpp>
+#include <ostream>
 
 class DominusCamera
 {
@@ -26,6 +27,8 @@ public:
 	void rotate(glm::vec3 delta);
 	void translate(glm::vec3 delta);
 	void setLookAt(glm::vec3 center);
+
+	friend std::ostream& operator<<(std::ostream& os, const DominusCamera& camera);
 private:
 	float fov;
 	float znear, zfar;

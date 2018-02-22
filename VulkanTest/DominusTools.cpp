@@ -237,3 +237,21 @@ std::string DominusTools::vkResultToString(const VkResult & vkResult)
 
 	return result;
 }
+
+std::string DominusTools::mat4ToString(glm::mat4 mat4)
+{
+	std::string result;
+
+	for (auto i = 0; i < 4; i++)
+	{
+		result = "[";
+		for (auto j = 0; j < 4; j++)
+		{
+			result += std::to_string(mat4[i][j]);
+			result += " ";
+		}
+		result += "]";
+	}
+
+	return result;
+}

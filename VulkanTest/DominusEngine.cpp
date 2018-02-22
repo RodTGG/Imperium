@@ -679,7 +679,7 @@ void DominusEngine::loadModels()
 	uint32_t vertexOffset = 0;
 	float modelOffset = 0;
 
-	for (auto i = 0; i < 10; i++)
+	for (auto i = 0; i < 1; i++)
 	{
 		DominusModel* tmp = new DominusModel(gDevice, vertexBuffer, glm::vec3(modelOffset, 0, 0));
 		tmp->vertexOffset = vertexOffset;
@@ -803,11 +803,12 @@ void DominusEngine::createUniformBuffer()
 
 	std::cout << "Creating uniform buffer" << std::endl;
 
-	gDevice.createBuffer(uniformBuffer, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
 	camera.setTranslation(glm::vec3(0.0f, -40.0f, 0.0f));
 	camera.setPerspective(90.0f, gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.01f, 100.0f);
-	camera.setLookAt(glm::vec3(0.0f, 0.0f, 0.0f));
+	camera.updateViewMatrix();
+	camera.setLookAt(glm::vec3(0.0f));
+
+	gDevice.createBuffer(uniformBuffer, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	ubo.model = glm::mat4(1.0f);
 	ubo.view = camera.view;
@@ -1399,11 +1400,11 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
 	}
 	else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.translate(glm::vec3(app->deltaTime, 0.0f, 0.0f));
+		app->camera.translate(glm::vec3(-app->deltaTime, 0.0f, 0.0f));
 	}
 	else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.translate(glm::vec3(0.0f, app->deltaTime, 0.0f));
+		app->camera.translate(glm::vec3(0.0f, -app->deltaTime, 0.0f));
 	}
 	else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
@@ -1415,7 +1416,7 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
 	}
 	else if (key == GLFW_KEY_E && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.translate(glm::vec3(0.0f, 0.0f, app->deltaTime));
+		app->camera.translate(glm::vec3(0.0f, 0.0f, -app->deltaTime));
 	}
 	else if (key == GLFW_KEY_1 && action == GLFW_PRESS)
 	{

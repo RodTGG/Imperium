@@ -1,4 +1,6 @@
 #include "DominusCamera.h"
+#include "DominusTools.h"
+#include <iostream>
 #include <gtc/matrix_transform.hpp>
 
 DominusCamera::DominusCamera()
@@ -14,17 +16,19 @@ DominusCamera::~DominusCamera()
 
 void DominusCamera::updateViewMatrix()
 {
-	glm::mat4 rotM = glm::mat4(1.0f);
-	glm::mat4 transM;
+	// TODO fix on camera update unknown rotation or translation
 
-	rotM = glm::rotate(rotM, glm::radians(rotation.x), glm::vec3(rotationSpeed, 0.0f, 0.0f));
-	rotM = glm::rotate(rotM, glm::radians(rotation.y), glm::vec3(0.0f, rotationSpeed, 0.0f));
-	rotM = glm::rotate(rotM, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, rotationSpeed));
+	glm::mat4 rotm = glm::mat4(1.0f);
+	glm::mat4 transm = glm::translate(glm::mat4(1.0f), position * movementSpeed);
 
-	transM = glm::translate(glm::mat4(1.0f), position * movementSpeed);
+	rotm = glm::rotate(rotm, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+	rotm = glm::rotate(rotm, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+	rotm = glm::rotate(rotm, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-	view = transM * rotM;
+	view = rotm * transm;
 	//view = glm::lookAt(position, center, glm::vec3(0.0f, 0.0f, 1.0f));
+
+	std::cout << *this << std::endl;
 }
 
 void DominusCamera::setPerspective(float aFov, float aAspect, float aZnear, float aZfar)
@@ -44,13 +48,11 @@ void DominusCamera::updateAspectRatio(float aAspect)
 void DominusCamera::setTranslation(glm::vec3 aPosition)
 {
 	position = aPosition;
-	updateViewMatrix();
 }
 
 void DominusCamera::setRotation(glm::vec3 aRotation)
 {
 	rotation = aRotation;
-	updateViewMatrix();
 }
 
 void DominusCamera::rotate(glm::vec3 aDelta)
@@ -61,7 +63,7 @@ void DominusCamera::rotate(glm::vec3 aDelta)
 
 void DominusCamera::translate(glm::vec3 aDelta)
 {
-	position += aDelta;
+	position += movementSpeed;
 	updateViewMatrix();
 }
 
@@ -69,4 +71,15 @@ void DominusCamera::setLookAt(glm::vec3 aCenter)
 {
 	center = aCenter;
 	view = glm::lookAt(position, center, glm::vec3(0.0f, 0.0f, 1.0f));
+}
+
+std::ostream& operator<<(std::ostream & os, const DominusCamera & camera)
+{
+	os << "Camera details" << std::endl;
+	os << "\tPosition: x=" << camera.position.x << " y=" << camera.position.y << " z=" << camera.position.z << std::endl;
+	os << "\tRotation: x=" << camera.rotation.x << " y=" << camera.rotation.y << " z=" << camera.rotation.z << std::endl;
+	os << "\tView: " << DominusTools::mat4ToString(camera.view) << std::endl;
+	os << "\tPerspective: " << DominusTools::mat4ToString(camera.perspective);
+
+	return os;
 }
