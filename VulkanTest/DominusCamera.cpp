@@ -19,14 +19,17 @@ void DominusCamera::updateViewMatrix()
 	// TODO fix on camera update unknown rotation or translation
 
 	glm::mat4 rotm = glm::mat4(1.0f);
-	glm::mat4 transm = glm::translate(glm::mat4(1.0f), position * movementSpeed);
+	glm::mat4 transm = glm::translate(glm::mat4(1.0f), position);
 
+	// Rotate pitch, yaw and roll (x,y,z)
 	rotm = glm::rotate(rotm, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
 	rotm = glm::rotate(rotm, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
 	rotm = glm::rotate(rotm, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
 	view = rotm * transm;
-	//view = glm::lookAt(position, center, glm::vec3(0.0f, 0.0f, 1.0f));
+	
+	//glm::vec3 tmp = view[2];
+	//view = glm::lookAt(position, tmp, glm::vec3(0.0f, 0.0f, 1.0f));
 
 	std::cout << *this << std::endl;
 }
@@ -55,15 +58,15 @@ void DominusCamera::setRotation(glm::vec3 aRotation)
 	rotation = aRotation;
 }
 
-void DominusCamera::rotate(glm::vec3 aDelta)
+void DominusCamera::rotate(glm::vec3 rotation)
 {
-	rotation += aDelta;
+	rotation += rotation;
 	updateViewMatrix();
 }
 
-void DominusCamera::translate(glm::vec3 aDelta)
+void DominusCamera::translate(glm::vec3 position)
 {
-	position += movementSpeed;
+	position += position;
 	updateViewMatrix();
 }
 
@@ -73,13 +76,33 @@ void DominusCamera::setLookAt(glm::vec3 aCenter)
 	view = glm::lookAt(position, center, glm::vec3(0.0f, 0.0f, 1.0f));
 }
 
+void DominusCamera::processInput(cameraMovements direction)
+{
+	switch (direction)
+	{
+	case FOWARD:
+		position.y += movementSpeed;
+		break;
+	case BACKWARD:
+		position.y -= movementSpeed;
+		break;
+	case LEFT:
+		position.x -= movementSpeed;
+		break;
+	case RIGHT:
+		position.x += movementSpeed;
+		break;
+	}
+	updateViewMatrix();
+}
+
 std::ostream& operator<<(std::ostream & os, const DominusCamera & camera)
 {
 	os << "Camera details" << std::endl;
 	os << "\tPosition: x=" << camera.position.x << " y=" << camera.position.y << " z=" << camera.position.z << std::endl;
 	os << "\tRotation: x=" << camera.rotation.x << " y=" << camera.rotation.y << " z=" << camera.rotation.z << std::endl;
 	os << "\tView: " << DominusTools::mat4ToString(camera.view) << std::endl;
-	os << "\tPerspective: " << DominusTools::mat4ToString(camera.perspective);
+	os << "\tPersp: " << DominusTools::mat4ToString(camera.perspective);
 
 	return os;
 }

@@ -1,1 +1,1 @@
-Error: Failed to submit to queue! DEVICE LOST
+Error: Failed to allocate memory!

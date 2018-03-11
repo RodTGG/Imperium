@@ -244,7 +244,7 @@ std::string DominusTools::mat4ToString(glm::mat4 mat4)
 
 	for (auto i = 0; i < 4; i++)
 	{
-		result = "[";
+		result += "\n\t\t[";
 		for (auto j = 0; j < 4; j++)
 		{
 			result += std::to_string(mat4[i][j]);

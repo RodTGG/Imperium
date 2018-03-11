@@ -84,6 +84,7 @@ void DominusEngine::initWindow()
 
 	glfwSetWindowSizeCallback(gWindow, onWindowResized);
 	glfwSetKeyCallback(gWindow, onKeyCallback);
+	//glfwSetMouseButtonCallback(gWindow, nullptr);
 }
 
 void DominusEngine::run()
@@ -98,7 +99,16 @@ void DominusEngine::gameLoop()
 {
 	std::cout << "Entering game loop" << std::endl;
 
+	std::chrono::high_resolution_clock::time_point showDelta;
+	std::chrono::high_resolution_clock::time_point currentFrame;
+	std::chrono::high_resolution_clock::time_point lastFrame;
+
 	while (!glfwWindowShouldClose(gWindow)) {
+		currentFrame = std::chrono::high_resolution_clock::now();
+		deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentFrame - lastFrame).count();
+		lastFrame = currentFrame;
+
+
 		glfwPollEvents();
 		updateUniformBuffer();
 		drawFrame();
@@ -679,7 +689,7 @@ void DominusEngine::loadModels()
 	uint32_t vertexOffset = 0;
 	float modelOffset = 0;
 
-	for (auto i = 0; i < 1; i++)
+	for (auto i = 0; i < 12; i++)
 	{
 		DominusModel* tmp = new DominusModel(gDevice, vertexBuffer, glm::vec3(modelOffset, 0, 0));
 		tmp->vertexOffset = vertexOffset;
@@ -804,7 +814,7 @@ void DominusEngine::createUniformBuffer()
 	std::cout << "Creating uniform buffer" << std::endl;
 
 	camera.setTranslation(glm::vec3(0.0f, -40.0f, 0.0f));
-	camera.setPerspective(90.0f, gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.01f, 100.0f);
+	camera.setPerspective(90.0f, (float)gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.01f, 100.0f);
 	camera.updateViewMatrix();
 	camera.setLookAt(glm::vec3(0.0f));
 
@@ -1109,11 +1119,6 @@ void DominusEngine::cleanupSwapChain()
 
 void DominusEngine::updateUniformBuffer()
 {
-	static auto startTime = std::chrono::high_resolution_clock::now();
-	auto currentTime = std::chrono::high_resolution_clock::now();
-
-	deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
 	ubo.proj = camera.perspective;
 	ubo.view = camera.view;
 
@@ -1396,19 +1401,19 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
 	}
 	else if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.translate(glm::vec3(0.0f, app->deltaTime, 0.0f));
+		app->camera.processInput(FOWARD);
 	}
 	else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.translate(glm::vec3(-app->deltaTime, 0.0f, 0.0f));
+		app->camera.processInput(LEFT);
 	}
 	else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.translate(glm::vec3(0.0f, -app->deltaTime, 0.0f));
+		app->camera.processInput(BACKWARD);
 	}
 	else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.translate(glm::vec3(app->deltaTime, 0.0f, 0.0f));
+		app->camera.processInput(RIGHT);
 	}
 	else if (key == GLFW_KEY_Q && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
