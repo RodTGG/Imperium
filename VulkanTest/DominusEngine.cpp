@@ -11,6 +11,8 @@
 
 DominusEngine::DominusEngine()
 {
+    lastX = WIDTH / 2.0f;
+    lastY = HEIGHT / 2.0f;
 }
 
 DominusEngine::~DominusEngine()
@@ -78,12 +80,14 @@ void DominusEngine::initWindow()
 
 	gWindow = glfwCreateWindow(WIDTH, HEIGHT, "VulkanTestWindow", nullptr, nullptr);
 	glfwSetWindowSizeLimits(gWindow, 100, 100, GLFW_DONT_CARE, GLFW_DONT_CARE);
+    glfwSetInputMode(gWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	// Set window pointer to engine class for retrieval in static methods
 	glfwSetWindowUserPointer(gWindow, this);
 
 	glfwSetWindowSizeCallback(gWindow, onWindowResized);
 	glfwSetKeyCallback(gWindow, onKeyCallback);
+    glfwSetCursorPosCallback(gWindow, onMousePositionCallback);
 	//glfwSetMouseButtonCallback(gWindow, nullptr);
 }
 
@@ -99,19 +103,26 @@ void DominusEngine::gameLoop()
 {
 	std::cout << "Entering game loop" << std::endl;
 
-	std::chrono::high_resolution_clock::time_point showDelta;
-	std::chrono::high_resolution_clock::time_point currentFrame;
-	std::chrono::high_resolution_clock::time_point lastFrame;
+    int32_t frames = 0;
+    auto targetRate = 1 / 60;
+    auto lasTime = glfwGetTime();
 
 	while (!glfwWindowShouldClose(gWindow)) {
-		currentFrame = std::chrono::high_resolution_clock::now();
-		deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentFrame - lastFrame).count();
-		lastFrame = currentFrame;
+        auto currentTime = glfwGetTime();
+        deltaTime = currentTime - lasTime;
+        frames++;
 
+        if (deltaTime >= 1.0f){
+            std::cout << frames << " ms/frame" << std::endl;
+            frames = 0;
+            lasTime += 1.0f;
+        }
 
-		glfwPollEvents();
-		updateUniformBuffer();
-		drawFrame();
+        glfwPollEvents();
+        updateUniformBuffer();
+
+        if (deltaTime >= targetRate)
+		    drawFrame();
 	}
 
 	vkDeviceWaitIdle(gDevice);
@@ -154,9 +165,9 @@ void DominusEngine::createVKInstance()
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pApplicationName = "Vulkan Test!";
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.pEngineName = "No Engine";
+	appInfo.pEngineName = "Dominus";
 	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	appInfo.apiVersion = VK_API_VERSION_1_1;
 
 	VkInstanceCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -816,7 +827,7 @@ void DominusEngine::createUniformBuffer()
 	camera.setTranslation(glm::vec3(0.0f, -40.0f, 0.0f));
 	camera.setPerspective(90.0f, (float)gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.01f, 100.0f);
 	camera.updateViewMatrix();
-	camera.setLookAt(glm::vec3(0.0f));
+	//camera.setLookAt(glm::vec3(0.0f));
 
 	gDevice.createBuffer(uniformBuffer, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -1401,19 +1412,19 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
 	}
 	else if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.processInput(FOWARD);
+		app->camera.processKeyboardInput(FOWARD);
 	}
 	else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.processInput(LEFT);
+		app->camera.processKeyboardInput(LEFT);
 	}
 	else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.processInput(BACKWARD);
+		app->camera.processKeyboardInput(BACKWARD);
 	}
 	else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		app->camera.processInput(RIGHT);
+		app->camera.processKeyboardInput(RIGHT);
 	}
 	else if (key == GLFW_KEY_Q && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
@@ -1435,6 +1446,24 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
 	{
 		app->createCommandBuffers(pipelineModes::POINT);
 	}
+}
+
+void DominusEngine::onMousePositionCallback(GLFWwindow * window, double xPos, double yPos)
+{
+    DominusEngine* app = reinterpret_cast<DominusEngine*>(glfwGetWindowUserPointer(window));
+
+    if (app->firstMouse)
+    {
+        app->lastX = xPos;
+        app->lastY = yPos;
+        app->firstMouse = false;
+    }
+
+    double xoffset = xPos - app->lastX;
+    double yoffset = yPos - app->lastY;
+    app->lastX = xPos;
+    app->lastY = yPos;
+    app->camera.processMouseInput(xoffset, yoffset);
 }
 
 void DominusEngine::onWindowResized(GLFWwindow * window, int width, int height)

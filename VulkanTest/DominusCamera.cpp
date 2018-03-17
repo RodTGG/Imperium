@@ -5,8 +5,24 @@
 
 DominusCamera::DominusCamera()
 {
+    radius = 10.0f;
+    yaw = 90.0f;
+    pitch = 0.0f;
+    roll = 0.0f;
+    rotationSpeed = 1.0f;
+    movementSpeed = 1.0f;
+    sensitivity = 0.1f;
+
 	position = glm::vec3(0.0f);
 	rotation = glm::vec3(0.0f);
+    
+	up = glm::vec3(0.0f, 0.0f, 1.0f);
+    cameraFront = glm::vec3(0.0f, -1.0f, 0.0f);
+
+    cameraTarget = glm::vec3(0.0f);
+    cameraDirection = glm::normalize(position - cameraTarget);
+    cameraRight = glm::normalize(glm::cross(up, cameraDirection));
+    cameraUp = glm::cross(cameraDirection, cameraRight);
 }
 
 
@@ -18,18 +34,25 @@ void DominusCamera::updateViewMatrix()
 {
 	// TODO fix on camera update unknown rotation or translation
 
-	glm::mat4 rotm = glm::mat4(1.0f);
-	glm::mat4 transm = glm::translate(glm::mat4(1.0f), position);
+	//glm::mat4 rotm = glm::mat4(1.0f);
+	//glm::mat4 transm = glm::translate(glm::mat4(0.0f), position);
 
 	// Rotate pitch, yaw and roll (x,y,z)
-	rotm = glm::rotate(rotm, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-	rotm = glm::rotate(rotm, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-	rotm = glm::rotate(rotm, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+	//rotm = glm::rotate(rotm, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+	//rotm = glm::rotate(rotm, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+	//rotm = glm::rotate(rotm, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+	//view = rotm * transm;
 
-	view = rotm * transm;
-	
-	//glm::vec3 tmp = view[2];
-	//view = glm::lookAt(position, tmp, glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::vec3 front;
+    front.x = -cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front.y = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front.z = -sin(glm::radians(pitch));
+
+    cameraFront = glm::normalize(front);
+    cameraRight = glm::normalize(glm::cross(cameraFront, up));
+    cameraUp = glm::normalize(glm::cross(cameraRight, cameraFront));
+
+	view = glm::lookAt(position, position + cameraFront, cameraUp);
 
 	std::cout << *this << std::endl;
 }
@@ -70,30 +93,41 @@ void DominusCamera::translate(glm::vec3 position)
 	updateViewMatrix();
 }
 
-void DominusCamera::setLookAt(glm::vec3 aCenter)
-{
-	center = aCenter;
-	view = glm::lookAt(position, center, glm::vec3(0.0f, 0.0f, 1.0f));
-}
-
-void DominusCamera::processInput(cameraMovements direction)
+void DominusCamera::processKeyboardInput(cameraMovements direction)
 {
 	switch (direction)
 	{
 	case FOWARD:
-		position.y += movementSpeed;
+		position += movementSpeed * cameraFront;
 		break;
 	case BACKWARD:
-		position.y -= movementSpeed;
+        position -= movementSpeed * cameraFront;
 		break;
 	case LEFT:
-		position.x -= movementSpeed;
+        position -= glm::normalize(glm::cross(cameraFront, cameraUp)) * movementSpeed;
 		break;
 	case RIGHT:
-		position.x += movementSpeed;
+        position += glm::normalize(glm::cross(cameraFront, cameraUp)) * movementSpeed;
 		break;
 	}
+
 	updateViewMatrix();
+}
+
+void DominusCamera::processMouseInput(double xOffset, double yOffset)
+{
+    xOffset *= sensitivity;
+    yOffset *= sensitivity;
+
+    yaw += xOffset;
+    pitch += yOffset;
+
+    if (pitch > 89.0f)
+        pitch = 89.0f;
+    if (pitch < -89.0f)
+        pitch = -89.0f;
+
+    updateViewMatrix();
 }
 
 std::ostream& operator<<(std::ostream & os, const DominusCamera & camera)

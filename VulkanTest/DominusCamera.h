@@ -2,6 +2,7 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
+#include <GLFW\glfw3.h>
 #include <glm.hpp>
 #include <ostream>
 
@@ -25,8 +26,23 @@ public:
 	glm::vec3 rotation;
 	glm::vec3 position;
 
-	float rotationSpeed = 1.0f;
-	float movementSpeed = 1.0f;
+	glm::vec3 cameraTarget;
+	glm::vec3 up;
+
+	glm::vec3 cameraDirection;
+	glm::vec3 cameraRight;
+    glm::vec3 cameraFront;
+	glm::vec3 cameraUp;
+
+    float radius;
+    float yaw;
+    float pitch;
+    float roll;
+    float rotationSpeed;
+    float movementSpeed;
+    float sensitivity;
+    float fov;
+    float znear, zfar;
 
 	DominusCamera();
 	~DominusCamera();
@@ -39,14 +55,11 @@ public:
 	void setRotation(glm::vec3 rotation);
 	void rotate(glm::vec3 rotation);
 	void translate(glm::vec3 position);
-	void setLookAt(glm::vec3 center);
 
-	void processInput(cameraMovements direction);
+	void processKeyboardInput(cameraMovements direction);
+    void processMouseInput(double xOffset, double yOffset);
 
 	friend std::ostream& operator<<(std::ostream& os, const DominusCamera& camera);
 private:
-	float fov;
-	float znear, zfar;
-	glm::vec3 center;
 };
 

@@ -37,7 +37,9 @@ private:
 	const std::string MODEL = "meshes/Invader.obj";
 	const std::string TEXTURE = "textures/chalet.jpg";
 
-	const bool enableValidationLayers = true;
+	const bool enableValidationLayers = false;
+
+    bool firstMouse = true;
 
 	//#ifdef _DEBUG
 	//	const bool enableValidationLayers = true;
@@ -48,7 +50,10 @@ private:
 	const std::vector<const char*> validationLayers = { "VK_LAYER_LUNARG_standard_validation" };
 	const std::vector<const char*> requiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-	float deltaTime;
+    double lastX;
+    double lastY;
+
+	double deltaTime;
 
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;
@@ -158,7 +163,8 @@ private:
 	VkResult createDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback);
 
 	static void onKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
-	static void onWindowResized(GLFWwindow* window, int width, int height);
+    static void onMousePositionCallback(GLFWwindow* window, double posX, double posY);
+    static void onWindowResized(GLFWwindow* window, int width, int height);
 	static void glfwErrorCallback(int error, const char* description);
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData);
 };
