@@ -37,7 +37,7 @@ private:
 	const std::string MODEL = "meshes/Invader.obj";
 	const std::string TEXTURE = "textures/chalet.jpg";
 
-	const bool enableValidationLayers = false;
+	const bool enableValidationLayers = true;
 
     bool firstMouse = true;
 

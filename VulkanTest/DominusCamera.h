@@ -43,12 +43,15 @@ public:
     float sensitivity;
     float fov;
     float znear, zfar;
+    double deltaT;
 
 	DominusCamera();
 	~DominusCamera();
 
-	// Creates a new view matrix with current position and rotation variables
-	void updateViewMatrix();
+    void update(double delta);
+
+    // Creates a new view matrix with current position and rotation variables
+    void updateViewMatrix();
 	void setPerspective(float fov, float aspect, float znear, float zfar);
 	void updateAspectRatio(float aspect);
 	void setTranslation(glm::vec3 position);
@@ -62,4 +65,3 @@ public:
 	friend std::ostream& operator<<(std::ostream& os, const DominusCamera& camera);
 private:
 };
-

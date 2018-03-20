@@ -30,6 +30,12 @@ DominusCamera::~DominusCamera()
 {
 }
 
+void DominusCamera::update(double delta)
+{
+    deltaT = delta;
+    updateViewMatrix();
+}
+
 void DominusCamera::updateViewMatrix()
 {
 	// TODO fix on camera update unknown rotation or translation
@@ -53,8 +59,6 @@ void DominusCamera::updateViewMatrix()
     cameraUp = glm::normalize(glm::cross(cameraRight, cameraFront));
 
 	view = glm::lookAt(position, position + cameraFront, cameraUp);
-
-	std::cout << *this << std::endl;
 }
 
 void DominusCamera::setPerspective(float aFov, float aAspect, float aZnear, float aZfar)
@@ -110,8 +114,6 @@ void DominusCamera::processKeyboardInput(cameraMovements direction)
         position += glm::normalize(glm::cross(cameraFront, cameraUp)) * movementSpeed;
 		break;
 	}
-
-	updateViewMatrix();
 }
 
 void DominusCamera::processMouseInput(double xOffset, double yOffset)
@@ -119,15 +121,13 @@ void DominusCamera::processMouseInput(double xOffset, double yOffset)
     xOffset *= sensitivity;
     yOffset *= sensitivity;
 
-    yaw += xOffset;
-    pitch += yOffset;
+    yaw += static_cast<float>(xOffset);
+    pitch += static_cast<float>(yOffset);
 
     if (pitch > 89.0f)
         pitch = 89.0f;
     if (pitch < -89.0f)
         pitch = -89.0f;
-
-    updateViewMatrix();
 }
 
 std::ostream& operator<<(std::ostream & os, const DominusCamera & camera)
