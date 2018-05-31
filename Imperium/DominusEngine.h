@@ -33,16 +33,20 @@ public:
 private:
 	const uint32_t WIDTH = 1200;
 	const uint32_t HEIGHT = 720;
-
 	const std::string MODEL = "meshes/Invader.obj";
 	const std::string TEXTURE = "textures/chalet.jpg";
-
-	const bool enableValidationLayers = true;
+    const int MAX_FRAMES_IN_FLIGHT = 2;
 
     bool firstMouse = true;
 
+    double lastX;
+    double lastY;
+    double deltaTime;
+
+    size_t currentFrame = 0;
+
 	//#ifdef _DEBUG
-	//	const bool enableValidationLayers = true;
+	const bool enableValidationLayers = true;
 	//#else
 	//	const bool enableValidationLayers = false;
 	//#endif //  NDEBUG
@@ -50,16 +54,18 @@ private:
 	const std::vector<const char*> validationLayers = { "VK_LAYER_LUNARG_standard_validation" };
 	const std::vector<const char*> requiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-    double lastX;
-    double lastY;
-
-	double deltaTime;
-
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;
 	std::vector<DominusModel*> sceneModels;
 	std::vector<Vertex> sceneVertices;
 	std::vector<uint32_t> sceneIndices;
+
+    enum pipelineModes
+    {
+        SOLID,
+        LINE,
+        POINT
+    };
 
 	DominusCamera camera;
 	DominusDevice gDevice;
@@ -80,15 +86,6 @@ private:
 	VkDescriptorSetLayout descriptionSetLayout;
 	VkPipelineLayout gPipelineLayout;
 
-	enum pipelineModes 
-	{
-		SOLID,
-		LINE,
-		POINT
-	};
-
-	std::array<VkPipeline, 3> pipelines;
-
 	DominusBuffer vertexBuffer;
 	DominusBuffer indexBuffer;
 	DominusBuffer uniformBuffer;
@@ -105,12 +102,13 @@ private:
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
-	VkSemaphore imageAvailableSemaphore;
-	VkSemaphore renderFinishedSemaphore;
-
+    std::array<VkPipeline, 3> pipelines;
 	std::vector<const char*> getRequiredExtensions();
 	std::vector<VkFramebuffer> gSwapChainFramebuffers;
 	std::vector<VkCommandBuffer> commandBuffers;
+    std::vector<VkSemaphore> imageAvailableSemaphores;
+    std::vector<VkSemaphore> renderFinishedSemaphores;
+    std::vector<VkFence> inFlightFences;
 
 	void initVulkan();
 	void initWindow();
@@ -133,7 +131,7 @@ private:
 	void createCommandBuffers(pipelineModes pipelineMode = pipelineModes::SOLID);
 	void createDescriptorPool();
 	void createDescriptorSet();
-	void createSempahores();
+	void createSyncObjects();
 	void recreateSwapChain();
 	void cleanupSwapChain();
 	void createDescriptionSetLayout();

@@ -17,10 +17,7 @@ DominusEngine::DominusEngine()
 
 DominusEngine::~DominusEngine()
 {
-    for (auto p : sceneModels)
-        delete p;
-
-    cleanUp();
+    std::cout << "Done!" << std::endl;
 }
 
 void DominusEngine::initVulkan()
@@ -48,7 +45,7 @@ void DominusEngine::initVulkan()
     createDescriptorPool();
     createDescriptorSet();
     createCommandBuffers();
-    createSempahores();
+    createSyncObjects();
 }
 
 void DominusEngine::initWindow()
@@ -97,40 +94,26 @@ void DominusEngine::run()
     initVulkan();
     gameLoop();
 
-    // Using destructor
-    //cleanUp();
+    // Try use destructor
+    cleanUp();
 }
 
 void DominusEngine::gameLoop()
 {
     std::cout << "Entering game loop" << std::endl;
 
-    int32_t frames = 0;
-    float targetRate = 1.0f / 60.0f;
     auto lasTime = glfwGetTime();
 
-    std::cout << "Target framerate: " << targetRate << std::endl;
-
-    while (!glfwWindowShouldClose(gWindow)) {
+    while (!glfwWindowShouldClose(gWindow))
+    {
         auto currentTime = glfwGetTime();
         deltaTime = currentTime - lasTime;
-        frames++;
-
-        if (deltaTime >= 1.0f) {
-            std::cout << frames << " frames" << std::endl;
-            std::cout << "DeltaTime: " << deltaTime << std::endl;
-            frames = 0;
-            lasTime += 1.0f;
-        }
-
         glfwPollEvents();
 
-        if (deltaTime >= targetRate)
-        {
-            camera.update(deltaTime);
-            updateUniformBuffer();
-            drawFrame();
-        }
+        camera.update(deltaTime);
+        updateUniformBuffer();
+        drawFrame();
+
     }
 
     vkDeviceWaitIdle(gDevice);
@@ -150,8 +133,13 @@ void DominusEngine::cleanUp()
     uniformBuffer.destroy();
     indexBuffer.destroy();
     vertexBuffer.destroy();
-    vkDestroySemaphore(gDevice, renderFinishedSemaphore, nullptr);
-    vkDestroySemaphore(gDevice, imageAvailableSemaphore, nullptr);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroySemaphore(gDevice, renderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(gDevice, imageAvailableSemaphores[i], nullptr);
+        vkDestroyFence(gDevice, inFlightFences[i], nullptr);
+    }
+
     vkDestroyCommandPool(gDevice, gDevice.graphicsCommandPool, nullptr);
     vkDestroyDevice(gDevice, nullptr);
     destroyDebugReportCallbackEXT(gInstance, gCallback, nullptr);
@@ -159,6 +147,9 @@ void DominusEngine::cleanUp()
     vkDestroyInstance(gInstance, nullptr);
     glfwDestroyWindow(gWindow);
     glfwTerminate();
+
+    for (auto p : sceneModels)
+        delete p;
 }
 
 void DominusEngine::createVKInstance()
@@ -308,9 +299,9 @@ void DominusEngine::createLogicalDevice()
     std::cout << gDevice;
 
     VkPhysicalDeviceFeatures enableFeatures = {};
-    enableFeatures.samplerAnisotropy = VK_TRUE;
-    enableFeatures.fillModeNonSolid = VK_TRUE;
-    enableFeatures.sampleRateShading = VK_TRUE;
+    enableFeatures.samplerAnisotropy = VK_FALSE;
+    enableFeatures.fillModeNonSolid = VK_FALSE;
+    enableFeatures.sampleRateShading = VK_FALSE;
 
     if (gDevice.createLogicalDevice(enableFeatures, requiredExtensions, VK_QUEUE_GRAPHICS_BIT) != VK_SUCCESS)
         std::runtime_error("Failed to create logical device");
@@ -706,19 +697,20 @@ void DominusEngine::createCommandPool()
 void DominusEngine::loadModels()
 {
     uint32_t vertexOffset = 0;
-    float modelOffset = 0;
+    float xOffset = 0.0f;
+    float zOffset = 0.0f;
 
-    for (auto i = 0; i < 2; i++)
-    {
-        DominusModel* tmp = new DominusModel(gDevice, vertexBuffer, glm::vec3(modelOffset, 0, 0));
-        tmp->vertexOffset = vertexOffset;
-        tmp->loadFromFile("meshes/invader.obj");
-        modelOffset += 20;
-        vertexOffset += 212;
+    DominusModel* tmp = new DominusModel(gDevice, vertexBuffer, glm::vec3(xOffset, 0, zOffset));
+    tmp->vertexOffset = vertexOffset;
+    tmp->loadFromFile("meshes/invader.obj");
+    xOffset += 20;
+    vertexOffset += 212;
 
-        std::cout << *tmp << std::endl;
-        sceneModels.push_back(tmp);
-    }
+    std::cout << *tmp << std::endl;
+    sceneModels.push_back(tmp);
+
+    xOffset = 0;
+    zOffset += 20;
 }
 
 void DominusEngine::createVertexBuffer()
@@ -764,7 +756,6 @@ void DominusEngine::createIndexBuffer()
 
     gDevice.copyBuffer(stagingBuffer, indexBuffer, bufferSize, gGraphicsQueue);
 }
-
 
 void DominusEngine::createCommandBuffers(pipelineModes pipelineMode)
 {
@@ -833,7 +824,7 @@ void DominusEngine::createUniformBuffer()
     std::cout << "Creating uniform buffer" << std::endl;
 
     camera.setTranslation(glm::vec3(0.0f, -40.0f, 0.0f));
-    camera.setPerspective(90.0f, (float)gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.01f, 100.0f);
+    camera.setPerspective(110.0f, (float)gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.01f, 500.0f);
     camera.updateViewMatrix();
     //camera.setLookAt(glm::vec3(0.0f));
 
@@ -844,15 +835,30 @@ void DominusEngine::createUniformBuffer()
     ubo.proj = camera.perspective;
 }
 
-void DominusEngine::createSempahores()
+void DominusEngine::createSyncObjects()
 {
     std::cout << "Creating semaphores" << std::endl;
+
+    imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
     VkSemaphoreCreateInfo semaphoreInfo = {};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    if (vkCreateSemaphore(gDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS || vkCreateSemaphore(gDevice, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create semaphores!");
+    VkFenceCreateInfo fenceInfo = {};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        if (vkCreateSemaphore(gDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
+            vkCreateSemaphore(gDevice, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
+            vkCreateFence(gDevice, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
+
+            throw std::runtime_error("failed to create synchronization object for a frame!");
+        }
+    }
 }
 
 void DominusEngine::createDescriptorPool()
@@ -1038,59 +1044,63 @@ void DominusEngine::createImage(uint32_t width, uint32_t height, VkFormat format
 
 void DominusEngine::drawFrame()
 {
-    uint32_t imageIndex;
-    VkSwapchainKHR swapChains[] = { gSwapChain };
-    VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
-    VkSemaphore signalSemaphores[] = { renderFinishedSemaphore };
+    vkWaitForFences(gDevice, 1, &inFlightFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
+    vkResetFences(gDevice, 1, &inFlightFences[currentFrame]);
 
-    VkResult result = vkAcquireNextImageKHR(gDevice, gSwapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+    uint32_t imageIndex;
+    VkResult result = vkAcquireNextImageKHR(gDevice, gSwapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         recreateSwapChain();
         return;
     }
-    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-    {
-        std::string error = "Failed to aquire swap chain image!";
-        throw std::runtime_error(error);
+    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+        throw std::runtime_error("failed to acquire swap chain image!");
     }
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
+    VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
+
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+
+    VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if ((result = vkQueueSubmit(gGraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)) != VK_SUCCESS)
-    {
-        std::string error = "Failed to submit to queue! ";
-        error.append(DominusTools::vkResultToString(result));
-        throw std::runtime_error(error);
+    if (vkQueueSubmit(gGraphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+        throw std::runtime_error("failed to submit draw command buffer!");
     }
 
     VkPresentInfoKHR presentInfo = {};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
     presentInfo.waitSemaphoreCount = 1;
     presentInfo.pWaitSemaphores = signalSemaphores;
+
+    VkSwapchainKHR swapChains[] = { gSwapChain };
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = swapChains;
+
     presentInfo.pImageIndices = &imageIndex;
-    presentInfo.pResults = nullptr;		// Optional
 
     result = vkQueuePresentKHR(gPresentQueue, &presentInfo);
 
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         recreateSwapChain();
-    else if (result != VK_SUCCESS)
+    }
+    else if (result != VK_SUCCESS) {
         throw std::runtime_error("failed to present swap chain image!");
+    }
 
-    vkQueueWaitIdle(gPresentQueue);
+    currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void DominusEngine::recreateSwapChain()
@@ -1358,6 +1368,9 @@ VkPresentModeKHR DominusEngine::chooseSwapPresentMode(const std::vector<VkPresen
     VkPresentModeKHR bestPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
     std::cout << "Selecting best swap present mode (" << availableModes.size() << ")" << std::endl;
+    
+    // TODO: find reason for Mailbox high 3D engine use almost 96%
+    return VK_PRESENT_MODE_FIFO_KHR;
 
     for (const auto& mode : availableModes)
     {
@@ -1421,7 +1434,7 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
     else if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
     {
         app->camera.processKeyboardInput(FOWARD);
-    }
+}
     else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
     {
         app->camera.processKeyboardInput(LEFT);
@@ -1454,7 +1467,7 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
     {
         app->createCommandBuffers(pipelineModes::POINT);
     }
-}
+    }
 
 void DominusEngine::onMousePositionCallback(GLFWwindow * window, double xPos, double yPos)
 {

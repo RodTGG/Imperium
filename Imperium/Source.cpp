@@ -1,6 +1,6 @@
-#define test window
+#define DomTest 0
 
-#if test == window
+#if DomTest
 #include <Windows.h>
 
 LRESULT WndProc(HWND hwnd, UINT uMSG, WPARAM wParam, LPARAM lParam)
@@ -18,6 +18,11 @@ LRESULT WndProc(HWND hwnd, UINT uMSG, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
+    case WM_MOUSEFIRST:
+        hdc = BeginPaint(hwnd, &ps);
+        TextOut(hdc, 200, 5, L"REEEEEEEEEEEEEEEE", 4);
+        EndPaint(hwnd, &ps);
+        break;
     default:
         return DefWindowProc(hwnd, uMSG, wParam, lParam);
         break;
@@ -34,8 +39,6 @@ LRESULT WndProc(HWND hwnd, UINT uMSG, WPARAM wParam, LPARAM lParam)
 
 void logToFile(std::string aLog) 
 {
-    
-
 	std::ofstream logFile("log.txt", std::ios::out | std::ios::trunc);
 
 	if (!logFile.is_open()) 
@@ -51,12 +54,12 @@ void logToFile(std::string aLog)
 
 int main() 
 {
-#if test == window
+#if DomTest
     HINSTANCE hInstance;
     HWND hWindow;
     WNDCLASSEX wcex;
 
-    ShowWindow(GetConsoleWindow(), SW_HIDE);
+    //ShowWindow(GetConsoleWindow(), SW_HIDE);
 
     auto szClassName = L"DominusClass";
     hInstance = GetModuleHandle(0);
@@ -107,12 +110,6 @@ int main()
     MSG msg;
     DominusEngine de;
 
-    while (GetMessage(&msg, NULL, 0, 0))
-    {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
-
     try {
         de.run();
     }
@@ -124,14 +121,18 @@ int main()
         return EXIT_FAILURE;
     }
 
-    return (int)msg.wParam;
+   /* while (GetMessage(&msg, NULL, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }*/
+
+   // return (int)msg.wParam;
 #else
     DominusEngine de;
-    WindowManager temp;
 
     try {
-        //de.run();
-        temp.initWindow();
+        de.run();
     }
     catch (const std::runtime_error& e) {
         std::cerr << e.what() << std::endl;
