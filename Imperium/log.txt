@@ -1,1 +1,1 @@
-Error: Failed to load texture image
+Error: Failed to find a suitable GPU

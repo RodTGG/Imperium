@@ -79,9 +79,6 @@
     <None Include="shaders\red.frag">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="shaders\yellow.frag">
-      <Filter>Resource Files</Filter>
-    </None>
     <None Include="shaders\green.frag">
       <Filter>Resource Files</Filter>
     </None>

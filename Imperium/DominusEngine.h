@@ -68,7 +68,6 @@ private:
         LINE,
         POINT,
 		RED,
-		YELLOW,
 		GREEN
     };
 

@@ -260,3 +260,4 @@ paket-files/
 __pycache__/
 *.pyc
 /Test64
+/Imperium/vk_layer_settings.txt

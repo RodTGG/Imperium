@@ -9,5 +9,5 @@ layout(location = 0) out vec4 outColor;
 layout(binding = 1) uniform sampler2D texSampler;
 
 void main() {
-    outColor = vec4(0, 0, 1, 1);
+    outColor = vec4(0, 1, 0, 1);
 }

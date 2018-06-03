@@ -412,9 +412,8 @@ void DominusEngine::createGraphicsPipeline()
 {
 	VkShaderModule vertShaderModule = DominusTools::loadShader(gDevice, "shaders/defaultVert.spv");
 	VkShaderModule defaultFragShader = DominusTools::loadShader(gDevice, "shaders/defaultFrag.spv");
-	VkShaderModule redFragShader = DominusTools::loadShader(gDevice, "shaders/greenFrag.spv");
-	VkShaderModule greenFragShader = DominusTools::loadShader(gDevice, "shaders/redFrag.spv");
-	VkShaderModule yellowFragShader = DominusTools::loadShader(gDevice, "shaders/yellowFrag.spv");
+	VkShaderModule redFragShader = DominusTools::loadShader(gDevice, "shaders/redFrag.spv");
+	VkShaderModule greenFragShader = DominusTools::loadShader(gDevice, "shaders/greenFrag.spv");
 
 	std::cout << "Creating graphics pipeline" << std::endl;
 
@@ -430,28 +429,7 @@ void DominusEngine::createGraphicsPipeline()
 	fragShaderStageInfo.module = defaultFragShader;
 	fragShaderStageInfo.pName = "main";
 
-	VkPipelineShaderStageCreateInfo redFrag = {};
-	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderStageInfo.module = redFragShader;
-	fragShaderStageInfo.pName = "main";
-
-	VkPipelineShaderStageCreateInfo greenFag = {};
-	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderStageInfo.module = greenFragShader;
-	fragShaderStageInfo.pName = "main";
-
-	VkPipelineShaderStageCreateInfo yellowFrag = {};
-	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderStageInfo.module = yellowFragShader;
-	fragShaderStageInfo.pName = "main";
-
 	VkPipelineShaderStageCreateInfo defaultStages[] = { vertShaderStageInfo, fragShaderStageInfo };
-	VkPipelineShaderStageCreateInfo redStages[] = { vertShaderStageInfo, fragShaderStageInfo };
-	VkPipelineShaderStageCreateInfo greenStages[] = { vertShaderStageInfo, fragShaderStageInfo };
-	VkPipelineShaderStageCreateInfo yellowStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	auto bindingDescription = Vertex::getBindingDescription();
@@ -588,55 +566,50 @@ void DominusEngine::createGraphicsPipeline()
 	if (vkCreatePipelineCache(gDevice, &pipelineCacheInfo, nullptr, &pipelineCache) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create pipeline cache");
 
-	std::cout << "\tCraeted pipeline cache" << std::endl;
+	std::cout << "\tCreated pipeline cache" << std::endl;
 
 	if (vkCreateGraphicsPipelines(gDevice, pipelineCache, 1, &pipelineInfo, nullptr, &pipelines[pipelineModes::SOLID]) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
 
-	std::cout << "\tCraeted solid pipeline" << std::endl;
+	std::cout << "\tCreated solid pipeline" << std::endl;
 
 	rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
-	pipelineInfo.flags = VK_PIPELINE_CREATE_DERIVATIVE_BIT;
-	pipelineInfo.basePipelineHandle = pipelines[pipelineModes::RED];
+	pipelineInfo.flags = VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT;
+	pipelineInfo.basePipelineHandle = pipelines[pipelineModes::SOLID];
 	pipelineInfo.basePipelineIndex = -1;
 
 	if (vkCreateGraphicsPipelines(gDevice, pipelineCache, 1, &pipelineInfo, nullptr, &pipelines[pipelineModes::LINE]) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
 
-	std::cout << "\tCraeted line pipeline" << std::endl;
+	std::cout << "\tCreated line pipeline" << std::endl;
 
 	rasterizer.polygonMode = VK_POLYGON_MODE_POINT;
 
 	if (vkCreateGraphicsPipelines(gDevice, pipelineCache, 1, &pipelineInfo, nullptr, &pipelines[pipelineModes::POINT]) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
 
-	std::cout << "\tCraeted point pipeline" << std::endl;
+	// TODO: Use push constants or pass Vec3 to shader save creating simple pipelines
+
+	std::cout << "\tCreated point pipeline" << std::endl;
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-	pipelineInfo.pStages = redStages;
+	defaultStages[1].module = redFragShader;
 
 	if (vkCreateGraphicsPipelines(gDevice, pipelineCache, 1, &pipelineInfo, nullptr, &pipelines[pipelineModes::RED]) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
 
-	std::cout << "\tCraeted Red pipeline" << std::endl;
-	pipelineInfo.pStages = greenStages;
+	std::cout << "\tCreated Red pipeline" << std::endl;
+	defaultStages[1].module = greenFragShader;
 
 	if (vkCreateGraphicsPipelines(gDevice, pipelineCache, 1, &pipelineInfo, nullptr, &pipelines[pipelineModes::GREEN]) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
 
-	std::cout << "\tCraeted Green pipeline" << std::endl;
-	pipelineInfo.pStages = yellowStages;
+	std::cout << "\tCreated Green pipeline" << std::endl;
 
-	if (vkCreateGraphicsPipelines(gDevice, pipelineCache, 1, &pipelineInfo, nullptr, &pipelines[pipelineModes::YELLOW]) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create graphics pipeline!");
-
-	std::cout << "\tCraeted Yellow pipeline" << std::endl;
-
-	vkDestroyPipelineCache(gDevice, pipelineCache, nullptr);
 	vkDestroyShaderModule(gDevice, defaultFragShader, nullptr);
 	vkDestroyShaderModule(gDevice, vertShaderModule, nullptr);
 	vkDestroyShaderModule(gDevice, redFragShader, nullptr);
-	vkDestroyShaderModule(gDevice, yellowFragShader, nullptr);
 	vkDestroyShaderModule(gDevice, greenFragShader, nullptr);
+	vkDestroyPipelineCache(gDevice, pipelineCache, nullptr);
 }
 
 void DominusEngine::createRenderPass()
@@ -846,18 +819,32 @@ void DominusEngine::createCommandBuffers(pipelineModes pipelineMode)
 		renderPassInfo.pClearValues = clearValues.data();
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[pipelineMode]);
 
 		VkDeviceSize offsets[1] = { 0 };
 
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-		for (auto model : sceneModels)
+		for (auto j = 0; j < sceneModels.size(); j++)
 		{
+			// TODO: Change to draw objects with the same color at the same time save re-binding.
+			if (j == 4)
+			{
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[pipelineModes::RED]);
+			}
+			else if (j % 2 == 0) 
+			{
+				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[pipelineModes::GREEN]);
+			}
+			else 
+			{
+				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[pipelineMode]);
+			}
+
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-			//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(sceneModels[0]->indices.size()), 1, 0, 0, 0);
-			model->draw(&commandBuffers[i]);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(sceneModels[j]->indices.size()), 1, 0, sceneModels[j]->vertexOffset, 0);
+			//sceneModels[j]->draw(&commandBuffers[i]);
+			//model->draw(&commandBuffers[i]);
 		}
 
 		vkCmdEndRenderPass(commandBuffers[i]);
