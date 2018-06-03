@@ -1,1 +1,1 @@
-Error: Failed to allocate memory!
+Error: Failed to load texture image

@@ -130,6 +130,12 @@ void DominusCamera::processMouseInput(double xOffset, double yOffset)
         pitch = -89.0f;
 }
 
+void DominusCamera::setLookAt(glm::vec3 center)
+{
+	view = glm::lookAt(position, center, up);
+	updateViewMatrix();
+}
+
 std::ostream& operator<<(std::ostream & os, const DominusCamera & camera)
 {
 	os << "Camera details" << std::endl;

@@ -45,7 +45,7 @@ VkShaderModule DominusTools::loadShader(const VkDevice & device, const std::stri
 
 	if (!file.is_open())
 	{
-		throw std::runtime_error("Failed to open file");
+		throw std::runtime_error("\nFailed to open file");
 	}
 
 	size_t fileSize = (size_t)file.tellg();

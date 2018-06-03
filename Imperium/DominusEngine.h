@@ -12,6 +12,7 @@
 #include <vector>
 #include <array>
 #include <string>
+#include <unordered_map>
 #include <vulkan\vulkan.hpp>
 #include <GLFW\glfw3.h>
 #include <glm.hpp>
@@ -21,6 +22,7 @@ struct UniformBufferObject
 	glm::mat4 model;
 	glm::mat4 view;
 	glm::mat4 proj;
+	glm::mat4 transform;
 };
 
 class DominusEngine
@@ -34,7 +36,7 @@ private:
 	const uint32_t WIDTH = 1200;
 	const uint32_t HEIGHT = 720;
 	const std::string MODEL = "meshes/Invader.obj";
-	const std::string TEXTURE = "textures/chalet.jpg";
+	const std::string TEXTURE = "textures/default.jpg";
     const int MAX_FRAMES_IN_FLIGHT = 2;
 
     bool firstMouse = true;
@@ -64,7 +66,10 @@ private:
     {
         SOLID,
         LINE,
-        POINT
+        POINT,
+		RED,
+		YELLOW,
+		GREEN
     };
 
 	DominusCamera camera;
@@ -102,7 +107,7 @@ private:
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
-    std::array<VkPipeline, 3> pipelines;
+	std::unordered_map<int, VkPipeline> pipelines;
 	std::vector<const char*> getRequiredExtensions();
 	std::vector<VkFramebuffer> gSwapChainFramebuffers;
 	std::vector<VkCommandBuffer> commandBuffers;

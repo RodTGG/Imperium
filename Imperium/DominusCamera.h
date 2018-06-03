@@ -62,6 +62,8 @@ public:
 	void processKeyboardInput(cameraMovements direction);
     void processMouseInput(double xOffset, double yOffset);
 
+	void setLookAt(glm::vec3 center);
+
 	friend std::ostream& operator<<(std::ostream& os, const DominusCamera& camera);
 private:
 };

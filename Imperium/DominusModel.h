@@ -12,7 +12,7 @@ public:
 	// TODO use pointers to single buffer to remove inefficient buffer switching
 	
 	// Pointer to vertex buffer
-	DominusBuffer * vBuffer;
+	//DominusBuffer * vBuffer;
 
 	// Pointer to dominus device
 	DominusDevice* device;
@@ -42,13 +42,13 @@ public:
 	uint32_t vertexOffset;
 
 	DominusModel();
-	DominusModel(DominusDevice& device, DominusBuffer& vertexBuffer, const glm::vec3& position);
+	DominusModel(DominusDevice& device, const glm::vec3& position = glm::vec3(0));
 	~DominusModel();
 
-	void draw(VkCommandBuffer* buffer);
+	virtual void draw(VkCommandBuffer* buffer);
 
 	// Loads vertices and indices to vector
-	bool loadFromFile(const std::string fPath);
+	virtual bool loadFromFile(const std::string fPath);
 
 	// Overload << operator
 	friend std::ostream& operator<<(std::ostream& os, DominusModel& dModel);

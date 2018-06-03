@@ -9,9 +9,8 @@ DominusModel::DominusModel()
 {
 }
 
-DominusModel::DominusModel(DominusDevice& aDevice, DominusBuffer& vertexBuffer, const glm::vec3 & aPosition)
+DominusModel::DominusModel(DominusDevice& aDevice, const glm::vec3 & aPosition)
 {
-	vBuffer = &vertexBuffer;
 	device = &aDevice;
 	position = aPosition;
 	rotation = glm::vec3(0.0f);
@@ -30,7 +29,6 @@ void DominusModel::draw(VkCommandBuffer* buffer)
 
 bool DominusModel::loadFromFile(const std::string fPath)
 {
-	filePath = fPath;
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;

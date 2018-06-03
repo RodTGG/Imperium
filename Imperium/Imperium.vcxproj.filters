@@ -70,10 +70,19 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\shader.frag">
+    <None Include="shaders\default.frag">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="shaders\shader.vert">
+    <None Include="shaders\default.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shaders\red.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shaders\yellow.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shaders\green.frag">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>
