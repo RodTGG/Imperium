@@ -76,11 +76,5 @@
     <None Include="shaders\default.vert">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="shaders\red.frag">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="shaders\green.frag">
-      <Filter>Resource Files</Filter>
-    </None>
   </ItemGroup>
 </Project>

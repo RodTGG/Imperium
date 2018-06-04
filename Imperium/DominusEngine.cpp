@@ -410,10 +410,8 @@ void DominusEngine::createTextureSampler()
 
 void DominusEngine::createGraphicsPipeline()
 {
-	VkShaderModule vertShaderModule = DominusTools::loadShader(gDevice, "shaders/defaultVert.spv");
-	VkShaderModule defaultFragShader = DominusTools::loadShader(gDevice, "shaders/defaultFrag.spv");
-	VkShaderModule redFragShader = DominusTools::loadShader(gDevice, "shaders/redFrag.spv");
-	VkShaderModule greenFragShader = DominusTools::loadShader(gDevice, "shaders/greenFrag.spv");
+	VkShaderModule vertShaderModule = DominusTools::loadShader(gDevice, "shaders/vert.spv");
+	VkShaderModule defaultFragShader = DominusTools::loadShader(gDevice, "shaders/frag.spv");
 
 	std::cout << "Creating graphics pipeline" << std::endl;
 
@@ -527,10 +525,17 @@ void DominusEngine::createGraphicsPipeline()
 	dynamicState.dynamicStateCount = 2;
 	dynamicState.pDynamicStates = dynamicStates;
 
+	VkPushConstantRange pushConstants[1] = {};
+	pushConstants[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	pushConstants[0].size = sizeof(glm::vec4);
+	pushConstants[0].offset = 0;
+
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.setLayoutCount = 1;
 	pipelineLayoutInfo.pSetLayouts = &descriptionSetLayout;
+	pipelineLayoutInfo.pushConstantRangeCount = 1;
+	pipelineLayoutInfo.pPushConstantRanges = pushConstants;
 
 	if (vkCreatePipelineLayout(gDevice, &pipelineLayoutInfo, nullptr, &gPipelineLayout) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create pipeline layout!");
@@ -588,27 +593,10 @@ void DominusEngine::createGraphicsPipeline()
 	if (vkCreateGraphicsPipelines(gDevice, pipelineCache, 1, &pipelineInfo, nullptr, &pipelines[pipelineModes::POINT]) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
 
-	// TODO: Use push constants or pass Vec3 to shader save creating simple pipelines
-
 	std::cout << "\tCreated point pipeline" << std::endl;
-	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-	defaultStages[1].module = redFragShader;
-
-	if (vkCreateGraphicsPipelines(gDevice, pipelineCache, 1, &pipelineInfo, nullptr, &pipelines[pipelineModes::RED]) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create graphics pipeline!");
-
-	std::cout << "\tCreated Red pipeline" << std::endl;
-	defaultStages[1].module = greenFragShader;
-
-	if (vkCreateGraphicsPipelines(gDevice, pipelineCache, 1, &pipelineInfo, nullptr, &pipelines[pipelineModes::GREEN]) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create graphics pipeline!");
-
-	std::cout << "\tCreated Green pipeline" << std::endl;
 
 	vkDestroyShaderModule(gDevice, defaultFragShader, nullptr);
 	vkDestroyShaderModule(gDevice, vertShaderModule, nullptr);
-	vkDestroyShaderModule(gDevice, redFragShader, nullptr);
-	vkDestroyShaderModule(gDevice, greenFragShader, nullptr);
 	vkDestroyPipelineCache(gDevice, pipelineCache, nullptr);
 }
 
@@ -716,7 +704,7 @@ void DominusEngine::loadModels()
 	float xOffset = 0.0f;
 	float zOffset = 0.0f;
 
-	for (auto i = 0; i < 5; i++) 
+	for (auto i = 0; i < 5; i++)
 	{
 		for (auto j = 0; j < 5; j++)
 		{
@@ -820,8 +808,13 @@ void DominusEngine::createCommandBuffers(pipelineModes pipelineMode)
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		VkDeviceSize offsets[1] = { 0 };
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[pipelineMode]);
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
+		// Set color
+		vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(1,1,0,1));
+
+		VkDeviceSize offsets[1] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
@@ -830,18 +823,21 @@ void DominusEngine::createCommandBuffers(pipelineModes pipelineMode)
 			// TODO: Change to draw objects with the same color at the same time save re-binding.
 			if (j == 4)
 			{
-			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[pipelineModes::RED]);
+				vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(1, 0, 0, 1));
 			}
-			else if (j % 2 == 0) 
+			else if (j == 8)
 			{
-				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[pipelineModes::GREEN]);
+				vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(0, 1, 0, 1));
 			}
-			else 
+			else if (j % 2 == 0)
 			{
-				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[pipelineMode]);
+				vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(0, 0, 1, 1));
+			}
+			else
+			{
+				vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(1, 1, 0, 1));
 			}
 
-			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(sceneModels[j]->indices.size()), 1, 0, sceneModels[j]->vertexOffset, 0);
 			//sceneModels[j]->draw(&commandBuffers[i]);
 			//model->draw(&commandBuffers[i]);
@@ -1407,7 +1403,7 @@ VkPresentModeKHR DominusEngine::chooseSwapPresentMode(const std::vector<VkPresen
 
 	std::cout << "Selecting best swap present mode (" << availableModes.size() << ")" << std::endl;
 
-	// TODO: find reason for Mailbox high 3D engine use almost 96%
+	// TODO: find reason for Mailbox high 3D engine use 80-96%
 	return VK_PRESENT_MODE_FIFO_KHR;
 
 	for (const auto& mode : availableModes)
