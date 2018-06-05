@@ -1,13 +1,17 @@
 #version 460
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(binding = 0) uniform UniformBufferObject 
+layout(binding = 0) uniform MVP 
 {
 	mat4 model;
 	mat4 view;
 	mat4 proj;
-	//mat4 transform;
-} ubo;
+} mvp;
+
+layout(binding = 2) uniform Transform
+{
+	mat4 transformation;
+} transform;
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inColor;
@@ -21,8 +25,10 @@ out gl_PerVertex {
 };
 
 void main() {
-	mat4 MVPmat = ubo.proj * ubo.view * ubo.model;
-    gl_Position = MVPmat * vec4(inPosition, 1.0);
+	mat4 MVPmat = mvp.proj * mvp.view * mvp.model;
+	mat4 transfMat = MVPmat * transform.transformation;
+    gl_Position = transfMat * vec4(inPosition, 1);
+
 	fragColor = vec3(1.0);
 	fragTexCoord = inTexCoord;
 }

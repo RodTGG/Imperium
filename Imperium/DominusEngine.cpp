@@ -1,4 +1,4 @@
-#include "DominusEngine.h"
+﻿#include "DominusEngine.h"
 #include "Vertex.h"
 #include <iostream>
 #include <set>
@@ -7,6 +7,7 @@
 #include <chrono>
 #include <stb_image.h>
 #include <unordered_map>
+#include <sstream>
 
 DominusEngine::DominusEngine()
 {
@@ -106,15 +107,19 @@ void DominusEngine::gameLoop()
 	{
 		auto currentTime = glfwGetTime();
 		deltaTime = currentTime - lasTime;
+
 		glfwPollEvents();
-
-		camera.update(deltaTime);
-		updateUniformBuffer();
+		update(deltaTime);
 		drawFrame();
-
 	}
 
 	vkDeviceWaitIdle(gDevice);
+}
+
+void DominusEngine::update(double deltaTime)
+{
+	camera.update(deltaTime);
+	updateMVP();
 }
 
 void DominusEngine::cleanUp()
@@ -128,7 +133,8 @@ void DominusEngine::cleanUp()
 	vkFreeMemory(gDevice, textureImageMemory, nullptr);
 	vkDestroyDescriptorPool(gDevice, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(gDevice, descriptionSetLayout, nullptr);
-	uniformBuffer.destroy();
+	transformBuffer.destroy();
+	mvpBuffer.destroy();
 	indexBuffer.destroy();
 	vertexBuffer.destroy();
 
@@ -141,7 +147,8 @@ void DominusEngine::cleanUp()
 	vkDestroyCommandPool(gDevice, gDevice.graphicsCommandPool, nullptr);
 	vkDestroyDevice(gDevice, nullptr);
 	vkDestroySurfaceKHR(gInstance, gSurface, nullptr);
-	destroyDebugReportCallbackEXT(gInstance, gCallback, nullptr);
+	destroyDebugReportCallbackEXT(gInstance, gDebugReportCallback, nullptr);
+	destroyDebugUtilsCallbackEXT(gInstance, gDebugUtilsCallback, nullptr);
 	vkDestroyInstance(gInstance, nullptr);
 	glfwDestroyWindow(gWindow);
 	glfwTerminate();
@@ -163,13 +170,13 @@ void DominusEngine::createVKInstance()
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	appInfo.pEngineName = "Dominus";
 	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_1;
+	appInfo.apiVersion = VK_API_VERSION_1_0;
+
+	auto extensions = getRequiredExtensions();
 
 	VkInstanceCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createInfo.pApplicationInfo = &appInfo;
-
-	auto extensions = getRequiredExtensions();
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 	createInfo.ppEnabledExtensionNames = extensions.data();
 
@@ -192,13 +199,25 @@ void DominusEngine::setupDebugCallback()
 
 	std::cout << "Setting up Vulkan debug callback" << std::endl;
 
-	VkDebugReportCallbackCreateInfoEXT createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
-	createInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
-	createInfo.pfnCallback = debugCallback;
+	VkDebugReportCallbackCreateInfoEXT debugReportCreateInfo = {};
+	debugReportCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
+	debugReportCreateInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
+	debugReportCreateInfo.pfnCallback = debugCallback;
 
-	if (createDebugReportCallbackEXT(gInstance, &createInfo, nullptr, &gCallback) != VK_SUCCESS)
-		throw std::runtime_error("Failed to set up debug callback!");
+	if (createDebugReportCallbackEXT(gInstance, &debugReportCreateInfo, nullptr, &gDebugReportCallback) != VK_SUCCESS)
+		throw std::runtime_error("Failed to set up debug report callback!");
+
+	VkDebugUtilsMessengerCreateInfoEXT debugUtilsCreateInfo = {};
+	debugUtilsCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+	debugUtilsCreateInfo.pNext = NULL;
+	debugUtilsCreateInfo.flags = 0;
+	debugUtilsCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+	debugUtilsCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+	debugUtilsCreateInfo.pfnUserCallback = debugMessageCallback;
+	debugUtilsCreateInfo.pUserData = NULL;
+
+	if (createDebugUtilsCallbackEXT(gInstance, &debugUtilsCreateInfo, nullptr, &gDebugUtilsCallback) != VK_SUCCESS)
+		throw std::runtime_error("Failed to set up debug util callback!");
 
 }
 
@@ -296,9 +315,9 @@ void DominusEngine::createLogicalDevice()
 	std::cout << gDevice;
 
 	VkPhysicalDeviceFeatures enableFeatures = {};
-	enableFeatures.samplerAnisotropy = VK_FALSE;
-	enableFeatures.fillModeNonSolid = VK_FALSE;
-	enableFeatures.sampleRateShading = VK_FALSE;
+	enableFeatures.samplerAnisotropy = VK_TRUE;
+	enableFeatures.fillModeNonSolid = VK_TRUE;
+	enableFeatures.sampleRateShading = VK_TRUE;
 
 	if (gDevice.createLogicalDevice(enableFeatures, requiredExtensions, VK_QUEUE_GRAPHICS_BIT) != VK_SUCCESS)
 		std::runtime_error("Failed to create logical device");
@@ -394,6 +413,7 @@ void DominusEngine::createTextureSampler()
 	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.anisotropyEnable = VK_TRUE;
+	//samplerInfo.anisotropyEnable = VK_FALSE;
 	samplerInfo.maxAnisotropy = 16;
 	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	samplerInfo.unnormalizedCoordinates = VK_FALSE;
@@ -700,28 +720,9 @@ void DominusEngine::createCommandPool()
 
 void DominusEngine::loadModels()
 {
-	uint32_t vertexOffset = 0;
-	float xOffset = 0.0f;
-	float zOffset = 0.0f;
-
-	for (auto i = 0; i < 5; i++)
-	{
-		for (auto j = 0; j < 5; j++)
-		{
-			DominusModel* tmp = new DominusModel(gDevice, glm::vec3(xOffset, 0, zOffset));
-			tmp->vertexOffset = vertexOffset;
-			tmp->loadFromFile("meshes/invader.obj");
-
-			xOffset += 20;
-			vertexOffset += 212;
-
-			std::cout << *tmp << std::endl;
-			sceneModels.push_back(tmp);
-		}
-
-		xOffset = 0;
-		zOffset += 20;
-	}
+	DominusModel* tmp = new DominusModel(gDevice, glm::vec3(0, 0, 0));
+	tmp->vertexOffset = 0;
+	tmp->loadFromFile("meshes/invader.obj");
 }
 
 void DominusEngine::createVertexBuffer()
@@ -768,6 +769,27 @@ void DominusEngine::createIndexBuffer()
 	gDevice.copyBuffer(stagingBuffer, indexBuffer, bufferSize, gGraphicsQueue);
 }
 
+void DominusEngine::createUniformBuffer()
+{
+	VkDeviceSize bufferSize = sizeof(MVPBuffer);
+
+	std::cout << "Creating uniform buffer" << std::endl;
+
+	camera.setTranslation(glm::vec3(0.0f, 0.0f, 40.0f));
+	camera.setPerspective(90.0f, (float)gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 200.0f);
+	camera.updateViewMatrix();
+	camera.setLookAt(glm::vec3(0.0));
+
+	gDevice.createBuffer(mvpBuffer, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	mvp.model = glm::mat4(1.0f);
+	mvp.view = camera.view;
+	mvp.proj = camera.perspective;
+
+	gDevice.createBuffer(transformBuffer, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	transformBuffer.transfer(&tmp);
+}
+
 void DominusEngine::createCommandBuffers(pipelineModes pipelineMode)
 {
 	commandBuffers.resize(gSwapChainFramebuffers.size());
@@ -811,8 +833,8 @@ void DominusEngine::createCommandBuffers(pipelineModes pipelineMode)
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[pipelineMode]);
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
-		// Set color
-		vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(1,1,0,1));
+		// Set pushConstants
+		//vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(1, 1, 0, 1));
 
 		VkDeviceSize offsets[1] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
@@ -850,24 +872,6 @@ void DominusEngine::createCommandBuffers(pipelineModes pipelineMode)
 	}
 }
 
-void DominusEngine::createUniformBuffer()
-{
-	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-	std::cout << "Creating uniform buffer" << std::endl;
-
-	camera.setTranslation(glm::vec3(0.0f, 0.0f, 40.0f));
-	camera.setPerspective(90.0f, (float)gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 200.0f);
-	camera.updateViewMatrix();
-	camera.setLookAt(glm::vec3(0.0));
-
-	gDevice.createBuffer(uniformBuffer, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-	ubo.model = glm::mat4(1.0f);
-	ubo.view = camera.view;
-	ubo.proj = camera.perspective;
-}
-
 void DominusEngine::createSyncObjects()
 {
 	std::cout << "Creating semaphores" << std::endl;
@@ -898,11 +902,13 @@ void DominusEngine::createDescriptorPool()
 {
 	std::cout << "Creating descriptor pool" << std::endl;
 
-	std::array<VkDescriptorPoolSize, 2> poolSizes = {};
+	std::array<VkDescriptorPoolSize, 3> poolSizes = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = 1;
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSizes[1].descriptorCount = 1;
+	poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSizes[2].descriptorCount = 1;
 
 	VkDescriptorPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -918,12 +924,12 @@ void DominusEngine::createDescriptionSetLayout()
 {
 	std::cout << "Creating descriptor set layout" << std::endl;
 
-	VkDescriptorSetLayoutBinding uboLayoutBinding = {};
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	uboLayoutBinding.pImmutableSamplers = nullptr;	// Optional
+	VkDescriptorSetLayoutBinding mvpLayoutBinding = {};
+	mvpLayoutBinding.binding = 0;
+	mvpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	mvpLayoutBinding.descriptorCount = 1;
+	mvpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	mvpLayoutBinding.pImmutableSamplers = nullptr;	// Optional
 
 	VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
 	samplerLayoutBinding.binding = 1;
@@ -932,14 +938,14 @@ void DominusEngine::createDescriptionSetLayout()
 	samplerLayoutBinding.pImmutableSamplers = nullptr;
 	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	VkDescriptorSetLayoutBinding tmpLayoutBinding = {};
-	tmpLayoutBinding.binding = 2;
-	tmpLayoutBinding.descriptorCount = 1;
-	tmpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	tmpLayoutBinding.pImmutableSamplers = nullptr;
-	tmpLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	VkDescriptorSetLayoutBinding transformLayoutBinding = {};
+	transformLayoutBinding.binding = 2;
+	transformLayoutBinding.descriptorCount = 1;
+	transformLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	transformLayoutBinding.pImmutableSamplers = nullptr;
+	transformLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-	std::array<VkDescriptorSetLayoutBinding, 3> bindings = { uboLayoutBinding, samplerLayoutBinding, tmpLayoutBinding };
+	std::array<VkDescriptorSetLayoutBinding, 3> bindings = { mvpLayoutBinding, samplerLayoutBinding, transformLayoutBinding };
 
 	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -964,17 +970,22 @@ void DominusEngine::createDescriptorSet()
 	if (vkAllocateDescriptorSets(gDevice, &allocInfo, &descriptorSet) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate descriptor set!");
 
-	VkDescriptorBufferInfo bufferInfo = {};
-	bufferInfo.buffer = uniformBuffer.buffer;
-	bufferInfo.offset = 0;
-	bufferInfo.range = sizeof(UniformBufferObject);
+	VkDescriptorBufferInfo mvpBufferInfo = {};
+	mvpBufferInfo.buffer = mvpBuffer.buffer;
+	mvpBufferInfo.offset = 0;
+	mvpBufferInfo.range = sizeof(MVPBuffer);
+
+	VkDescriptorBufferInfo transformBufferInfo = {};
+	transformBufferInfo.buffer = mvpBuffer.buffer;
+	transformBufferInfo.offset = 0;
+	transformBufferInfo.range = sizeof(glm::mat4);
 
 	VkDescriptorImageInfo imageInfo = {};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	imageInfo.imageView = textureImageView;
 	imageInfo.sampler = textureSampler;
 
-	std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+	std::array<VkWriteDescriptorSet, 3> descriptorWrites = {};
 
 	descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	descriptorWrites[0].dstSet = descriptorSet;
@@ -982,7 +993,7 @@ void DominusEngine::createDescriptorSet()
 	descriptorWrites[0].dstArrayElement = 0;
 	descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	descriptorWrites[0].descriptorCount = 1;
-	descriptorWrites[0].pBufferInfo = &bufferInfo;
+	descriptorWrites[0].pBufferInfo = &mvpBufferInfo;
 
 	descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	descriptorWrites[1].dstSet = descriptorSet;
@@ -991,6 +1002,14 @@ void DominusEngine::createDescriptorSet()
 	descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	descriptorWrites[1].descriptorCount = 1;
 	descriptorWrites[1].pImageInfo = &imageInfo;
+
+	descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrites[2].dstSet = descriptorSet;
+	descriptorWrites[2].dstBinding = 2;
+	descriptorWrites[2].dstArrayElement = 0;
+	descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorWrites[2].descriptorCount = 1;
+	descriptorWrites[2].pBufferInfo = &transformBufferInfo;
 
 	vkUpdateDescriptorSets(gDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
@@ -1180,13 +1199,13 @@ void DominusEngine::cleanupSwapChain()
 	vkDestroySwapchainKHR(gDevice, gSwapChain, nullptr);
 }
 
-void DominusEngine::updateUniformBuffer()
+void DominusEngine::updateMVP()
 {
-	ubo.proj = camera.perspective;
-	ubo.view = camera.view;
+	mvp.proj = camera.perspective;
+	mvp.view = camera.view;
 
-	uniformBuffer.bufferSize = sizeof(ubo);
-	uniformBuffer.transfer(&ubo);
+	mvpBuffer.bufferSize = sizeof(mvp);
+	mvpBuffer.transfer(&mvp);
 }
 
 bool DominusEngine::checkValidationLayerSupport()
@@ -1501,7 +1520,7 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
 	{
 		app->createCommandBuffers(pipelineModes::POINT);
 	}
-}
+	}
 
 void DominusEngine::onMousePositionCallback(GLFWwindow * window, double xPos, double yPos)
 {
@@ -1553,7 +1572,10 @@ std::vector<const char*> DominusEngine::getRequiredExtensions()
 	}
 
 	if (enableValidationLayers)
+	{
 		extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+		extensions.push_back("VK_EXT_debug_utils");
+	}
 
 	return extensions;
 }
@@ -1563,19 +1585,9 @@ void DominusEngine::glfwErrorCallback(int error, const char * description)
 	puts(description);
 }
 
-void DominusEngine::destroyDebugReportCallbackEXT(VkInstance aInstance, VkDebugReportCallbackEXT aCallback, const VkAllocationCallbacks * aAllocator)
-{
-	std::cout << "destroying vulkan debug callback function" << std::endl;
-
-	auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(aInstance, "vkDestroyDebugReportCallbackEXT");
-
-	if (func != nullptr)
-		func(aInstance, aCallback, aAllocator);
-}
-
 VkResult DominusEngine::createDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback)
 {
-	std::cout << "Creating vulkan debug callback function" << std::endl;
+	std::cout << "Creating vulkan debug report callback function" << std::endl;
 
 	auto func = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
 
@@ -1585,9 +1597,110 @@ VkResult DominusEngine::createDebugReportCallbackEXT(VkInstance instance, const 
 		return VK_ERROR_EXTENSION_NOT_PRESENT;
 }
 
+void DominusEngine::destroyDebugReportCallbackEXT(VkInstance aInstance, VkDebugReportCallbackEXT aCallback, const VkAllocationCallbacks * aAllocator)
+{
+	std::cout << "destroying vulkan debug report callback function" << std::endl;
+
+	auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(aInstance, "vkDestroyDebugReportCallbackEXT");
+
+	if (func != nullptr)
+		func(aInstance, aCallback, aAllocator);
+}
+
+VkResult DominusEngine::createDebugUtilsCallbackEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pCallback)
+{
+	std::cout << "Creating vulkan debug utils callback function" << std::endl;
+
+	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+
+	if (func != nullptr)
+		return func(instance, pCreateInfo, pAllocator, pCallback);
+	else
+		return VK_ERROR_EXTENSION_NOT_PRESENT;
+}
+
+void DominusEngine::destroyDebugUtilsCallbackEXT(VkInstance aInstance, VkDebugUtilsMessengerEXT aCallback, const VkAllocationCallbacks * aAllocator)
+{
+	std::cout << "destroying vulkan debug utils callback function" << std::endl;
+
+	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(aInstance, "vkDestroyDebugUtilsMessengerEXT");
+
+	if (func != nullptr)
+		func(aInstance, aCallback, aAllocator);
+}
+
 VKAPI_ATTR VkBool32 VKAPI_CALL DominusEngine::debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char * layerPrefix, const char * msg, void * userData)
 {
-	std::cerr << "Error : " << code << " at " << location << " - validation layer: " << msg << std::endl;
+	std::cerr << "Validation layer: " << msg << std::endl;
+
+	return VK_FALSE;
+}
+
+VKAPI_ATTR VkBool32 VKAPI_CALL DominusEngine::debugMessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT * callbackData, void * userData)
+{
+	std::ostringstream stringStream;
+	std::string prefix;
+	std::string message;
+
+	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+	{
+		prefix = "VERBOSE: ";
+	}
+	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+	{
+		prefix = "INFO: ";
+	}
+	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+	{
+		prefix = "WARNING: ";
+	}
+	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+	{
+		prefix = "ERROR: ";
+	}
+
+	if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
+	{
+		prefix = "GENERAL ";
+	}
+	else if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
+	{
+		prefix = "PERF ";
+	}
+
+	stringStream << prefix <<
+		" - Message ID number " << callbackData->messageIdNumber <<
+		", Message ID String: " << std::endl <<
+		callbackData->pMessageIdName <<
+		" " << callbackData->pMessage << std::endl;
+
+	if (callbackData->objectCount > 0)
+	{
+		stringStream << "Objects - " << callbackData->objectCount << std::endl;
+
+		for (uint32_t object = 0; object < callbackData->objectCount; ++object)
+		{
+			stringStream << "\tObject - Type" << DominusTools::DebugObjectToString(callbackData->pObjects->objectType) <<
+				"Value " << (void*)(callbackData->pObjects[object].objectHandle) <<
+				"Name " << callbackData->pObjects[object].pObjectName << std::endl;
+		}
+	}
+
+	if (callbackData->cmdBufLabelCount > 0)
+	{
+		stringStream << "Command Buffer Labels - " << callbackData->cmdBufLabelCount << std::endl;
+
+		for (uint32_t label = 0; label < callbackData->cmdBufLabelCount; ++label)
+		{
+			stringStream << "\tLabel[" << label << "] - " << callbackData->pCmdBufLabels[label].pLabelName << "{" <<
+				callbackData->pCmdBufLabels[label].color[0] <<
+				callbackData->pCmdBufLabels[label].color[1] <<
+				callbackData->pCmdBufLabels[label].color[2] <<
+				callbackData->pCmdBufLabels[label].color[3] << "}" << std::endl;
+		}
+	}
+
+	std::cout << stringStream.str() << std::endl;
 
 	return VK_FALSE;
 }

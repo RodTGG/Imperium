@@ -32,6 +32,7 @@ DominusDevice::DominusDevice(VkPhysicalDevice aPhysicalDevice)
 	if (extensionCount > 0)
 	{
 		std::vector<VkExtensionProperties> extensions(extensionCount);
+
 		if (vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, extensions.data())
 			!= VK_SUCCESS) {
 			throw std::runtime_error("Failed to enumerate extensions!");
@@ -96,38 +97,6 @@ VkResult DominusDevice::createLogicalDevice(VkPhysicalDeviceFeatures aEnableFeat
 
 	return result;
 }
-
-//DominusBuffer DominusDevice::createBuffer(DominusBuffer & buffer)
-//{
-//	std::cout << "Creating buffer:" << std::endl;
-//	std::cout << "\tSize: " << buffer.size << " bytes" << std::endl;
-//	std::cout << "\tUsage: " << buffer.usageFlags << std::endl;
-//
-//	VkBufferCreateInfo bufferInfo = {};
-//	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-//	bufferInfo.size = buffer.size;
-//	bufferInfo.usage = buffer.usageFlags;
-//	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-//
-//	if (vkCreateBuffer(logicalDevice, &bufferInfo, nullptr, &buffer.buffer) != VK_SUCCESS)
-//		throw std::runtime_error("Failed to create buffer");
-//
-//	VkMemoryRequirements memRequirements;
-//	vkGetBufferMemoryRequirements(logicalDevice, buffer.buffer, &memRequirements);
-//
-//	VkMemoryAllocateInfo allocInfo = {};
-//	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-//	allocInfo.allocationSize = memRequirements.size;
-//	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, buffer.memoryPropertyFlags);
-//
-//	if (vkAllocateMemory(logicalDevice, &allocInfo, nullptr, &buffer.bufferMemory) != VK_SUCCESS)
-//		throw std::runtime_error("Failed to allocate memory!");
-//
-//	buffer.setDescriptor();
-//	buffer.bind();
-//
-//	return buffer;
-//}
 
 VkResult DominusDevice::createBuffer(DominusBuffer& buffer, const VkDeviceSize size, const VkBufferUsageFlags usageFlags, const VkMemoryPropertyFlags memoryPropertyFlags)
 {

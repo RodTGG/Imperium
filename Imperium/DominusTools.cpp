@@ -255,3 +255,134 @@ std::string DominusTools::mat4ToString(glm::mat4 mat4)
 
 	return result;
 }
+
+std::string DominusTools::DebugObjectToString(VkObjectType object)
+{
+	std::string result;
+
+	switch (object)
+	{
+	case VK_OBJECT_TYPE_UNKNOWN:
+		result = "Unkown";
+		break;
+	case VK_OBJECT_TYPE_INSTANCE:
+		result = "Instance";
+		break;
+	case VK_OBJECT_TYPE_PHYSICAL_DEVICE:
+		result = "Physical Device";
+		break;
+	case VK_OBJECT_TYPE_DEVICE:
+		result = "Logical Device";
+		break;
+	case VK_OBJECT_TYPE_QUEUE:
+		result = "Queue";
+		break;
+	case VK_OBJECT_TYPE_SEMAPHORE:
+		result = "Semaphore";
+		break;
+	case VK_OBJECT_TYPE_COMMAND_BUFFER:
+		result = "Command Buffer";
+		break;
+	case VK_OBJECT_TYPE_FENCE:
+		result = "Fence";
+		break;
+	case VK_OBJECT_TYPE_DEVICE_MEMORY:
+		result = "Device Memory";
+		break;
+	case VK_OBJECT_TYPE_BUFFER:
+		result = "Buffer";
+		break;
+	case VK_OBJECT_TYPE_IMAGE:
+		result = "Image";
+		break;
+	case VK_OBJECT_TYPE_EVENT:
+		result = "EVENT";
+		break;
+	case VK_OBJECT_TYPE_QUERY_POOL:
+		result = "Query Pool";
+		break;
+	case VK_OBJECT_TYPE_BUFFER_VIEW:
+		result = "Buffer View";
+		break;
+	case VK_OBJECT_TYPE_IMAGE_VIEW:
+		result = "Image View";
+		break;
+	case VK_OBJECT_TYPE_SHADER_MODULE:
+		result = "Shader Module";
+		break;
+	case VK_OBJECT_TYPE_PIPELINE_CACHE:
+		result = "Pipeline Cache";
+		break;
+	case VK_OBJECT_TYPE_PIPELINE_LAYOUT:
+		result = "Pipeline Layout";
+		break;
+	case VK_OBJECT_TYPE_RENDER_PASS:
+		result = "Render Pass";
+		break;
+	case VK_OBJECT_TYPE_PIPELINE:
+		result = "Pipeline";
+		break;
+	case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT:
+		result = "Descriptor Set Layout";
+		break;
+	case VK_OBJECT_TYPE_SAMPLER:
+		result = "Sampler";
+		break;
+	case VK_OBJECT_TYPE_DESCRIPTOR_POOL:
+		result = "Descritor Pool";
+		break;
+	case VK_OBJECT_TYPE_DESCRIPTOR_SET:
+		result = "Descriptor Set";
+		break;
+	case VK_OBJECT_TYPE_FRAMEBUFFER:
+		result = "Framebuffer";
+		break;
+	case VK_OBJECT_TYPE_COMMAND_POOL:
+		result = "Command Pool";
+		break;
+	case VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION:
+		result = "Sampler YCBCR Conversion";
+		break;
+	case VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE:
+		result = "Descriptor Update Template";
+		break;
+	case VK_OBJECT_TYPE_SURFACE_KHR:
+		result = "Surface KHR";
+		break;
+	case VK_OBJECT_TYPE_SWAPCHAIN_KHR:
+		result = "Swapchain";
+		break;
+	case VK_OBJECT_TYPE_DISPLAY_KHR:
+		result = "Display KHR";
+		break;
+	case VK_OBJECT_TYPE_DISPLAY_MODE_KHR:
+		result = "Display Mode KHR";
+		break;
+	case VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT:
+		result = "Debug Report Callback EXT";
+		break;
+	case VK_OBJECT_TYPE_OBJECT_TABLE_NVX:
+		result = "Object Table NVX";
+		break;
+	case VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX:
+		result = "Indirect Commands Layout NVX";
+		break;
+	case VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT:
+		result = "Debug Utils Messenger EXT";
+		break;
+	case VK_OBJECT_TYPE_VALIDATION_CACHE_EXT:
+		result = "Validation Cache EXT";
+		break;
+	case VK_OBJECT_TYPE_RANGE_SIZE:
+		result = "Range Size";
+		break;
+	case VK_OBJECT_TYPE_MAX_ENUM:
+		result = "Max Enum";
+		break;
+	default:
+		result = "Unkown";
+		break;
+	}
+
+	return result;
+}

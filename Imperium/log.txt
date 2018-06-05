@@ -1,1 +1,1 @@
-Error: Failed to find a suitable GPU
+Error: Failed to create instance

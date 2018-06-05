@@ -28,5 +28,8 @@ public:
 
 	// Returns string filled with glm::mat4 data
 	static std::string mat4ToString(glm::mat4 mat4);
+
+	// Returns a string to represent the object type
+	static std::string DebugObjectToString(VkObjectType object);
 private:
 };
