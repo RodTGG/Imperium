@@ -1,1 +1,1 @@
-Error: Failed to create instance
+Error: Failed to allocate memory!

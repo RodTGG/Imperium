@@ -4,7 +4,11 @@
 class DominusCharacter : public DominusModel
 {
 public:
-    DominusCharacter(DominusDevice& device, const glm::vec3& position = glm::vec3(0));
+	std::string name;
+	glm::vec4 color;
+
+	DominusCharacter();
+    DominusCharacter(std::string aName, DominusDevice& device, glm::vec3& position, glm::vec4 color);
     ~DominusCharacter();
 };
 

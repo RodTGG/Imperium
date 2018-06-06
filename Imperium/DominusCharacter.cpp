@@ -1,7 +1,12 @@
 #include "DominusCharacter.h"
 
-DominusCharacter::DominusCharacter(DominusDevice& device, const glm::vec3& position) : DominusModel(device, position)
+DominusCharacter::DominusCharacter()
 {
+}
+
+DominusCharacter::DominusCharacter(std::string aName, DominusDevice& device, glm::vec3& position, glm::vec4 color) : DominusModel(device, position, color)
+{
+	name = aName;
 }
 
 DominusCharacter::~DominusCharacter()

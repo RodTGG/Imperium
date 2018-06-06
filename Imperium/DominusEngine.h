@@ -8,11 +8,14 @@
 #include "DominusBuffer.h"
 #include "DominusCamera.h"
 #include "DominusTools.h"
+#include "DominusCharacter.h"
+#include "Vertex.h"
 
 #include <vector>
 #include <array>
 #include <string>
 #include <unordered_map>
+
 #include <vulkan\vulkan.hpp>
 #include <GLFW\glfw3.h>
 #include <glm.hpp>
@@ -25,15 +28,25 @@ public:
 
 	void run();
 private:
+	enum pipelineModes
+	{
+		SOLID,
+		LINE,
+		POINT
+	};
+
+	int currentPipeline = pipelineModes::SOLID;
+
+	double moveTime = 0.0;
+
+	std::array<DominusCharacter, 2> players = {};
+
 	struct MVPBuffer
 	{
-		glm::mat4 model;
+		//glm::mat4 model;
 		glm::mat4 view;
 		glm::mat4 proj;
-		//glm::mat4 transform;
 	} mvp;
-
-	glm::mat4 tmp = glm::mat4(1.0f);
 
 
 	const uint32_t WIDTH = 1200;
@@ -60,18 +73,11 @@ private:
 
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;
+
+	//std::vector<DominusCharacter*> sceneModels;
 	std::vector<DominusModel*> sceneModels;
 	std::vector<Vertex> sceneVertices;
 	std::vector<uint32_t> sceneIndices;
-
-	enum pipelineModes
-	{
-		SOLID,
-		LINE,
-		POINT,
-		RED,
-		GREEN
-	};
 
 	DominusCamera camera;
 	DominusDevice gDevice;
@@ -96,7 +102,6 @@ private:
 	DominusBuffer vertexBuffer;
 	DominusBuffer indexBuffer;
 	DominusBuffer mvpBuffer;
-	DominusBuffer transformBuffer;
 
 	VkDescriptorPool descriptorPool;
 	VkDescriptorSet descriptorSet;
@@ -136,7 +141,7 @@ private:
 	void loadModels();
 	void createVertexBuffer();
 	void createIndexBuffer();
-	void createCommandBuffers(pipelineModes pipelineMode = pipelineModes::SOLID);
+	void createCommandBuffers();
 	void createDescriptorPool();
 	void createDescriptorSet();
 	void createSyncObjects();
@@ -144,13 +149,14 @@ private:
 	void cleanupSwapChain();
 	void createDescriptionSetLayout();
 	void createUniformBuffer();
-	void updateMVP();
 	void createTextureImage();
 	void createDepthResources();
 	void createTextureImageView();
 	void createImageViews();
 	void createTextureSampler();
 	void drawFrame();
+
+	void updateCommandBuffers();
 
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory);
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);

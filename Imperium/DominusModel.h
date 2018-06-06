@@ -1,4 +1,6 @@
 #pragma once
+#define GLM_ENABLE_EXPERIMENTAL
+
 #include "DominusBuffer.h"
 #include "DominusDevice.h"
 #include "glm.hpp"
@@ -9,6 +11,10 @@
 class DominusModel
 {
 public:
+	glm::vec4 color;
+
+	glm::mat4 modelMat;
+
 	// TODO use pointers to single buffer to remove inefficient buffer switching
 	
 	// Pointer to vertex buffer
@@ -42,8 +48,10 @@ public:
 	uint32_t vertexOffset;
 
 	DominusModel();
-	DominusModel(DominusDevice& device, const glm::vec3& position = glm::vec3(0));
+	DominusModel(DominusDevice& device, const glm::vec3 position = glm::vec3(0.0f), const glm::vec4 color = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
 	~DominusModel();
+
+	void updateModelMatrix();
 
 	virtual void draw(VkCommandBuffer* buffer);
 

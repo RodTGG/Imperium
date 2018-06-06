@@ -1,4 +1,6 @@
 #include "DominusModel.h"
+#include "DominusTools.h"
+#include <gtc/matrix_transform.hpp>
 #include <iostream>
 #include <unordered_map>
 
@@ -9,13 +11,15 @@ DominusModel::DominusModel()
 {
 }
 
-DominusModel::DominusModel(DominusDevice& aDevice, const glm::vec3 & aPosition)
+DominusModel::DominusModel(DominusDevice& aDevice, const glm::vec3 aPosition, const glm::vec4 aColor)
 {
 	device = &aDevice;
 	position = aPosition;
-	rotation = glm::vec3(0.0f);
+	rotation = glm::vec3(1.0f);
 	scaling = glm::vec3(1.0f);
 	UVScaling = glm::vec2(1.0f);
+	modelMat = glm::mat4(1.0f);
+	color = aColor;
 }
 
 DominusModel::~DominusModel()
@@ -49,9 +53,9 @@ bool DominusModel::loadFromFile(const std::string fPath)
 			Vertex vertex = {};
 
 			vertex.pos = {
-				attrib.vertices[3 * index.vertex_index + 0] * scaling.x + position.x,
-				attrib.vertices[3 * index.vertex_index + 1] * scaling.y + position.y,
-				attrib.vertices[3 * index.vertex_index + 2] * scaling.z + position.z
+				attrib.vertices[3 * index.vertex_index + 0],
+				attrib.vertices[3 * index.vertex_index + 1],
+				attrib.vertices[3 * index.vertex_index + 2]
 			};
 
 			vertex.texCoord = {
@@ -84,6 +88,17 @@ bool DominusModel::loadFromFile(const std::string fPath)
 	return true;
 }
 
+void DominusModel::updateModelMatrix()
+{
+	glm::mat4 transMat = glm::translate(glm::mat4(1.0f), position);
+	glm::mat4 rotMat = glm::mat4(1.0f);
+	rotMat = glm::rotate(rotMat, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+	rotMat = glm::rotate(rotMat, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+	rotMat = glm::rotate(rotMat, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+	glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), scaling);
+	modelMat = transMat * rotMat * scaleMat;
+}
+
 std::ostream & operator<<(std::ostream & os, DominusModel & dModel)
 {
 	os << "World info" << std::endl;
@@ -91,6 +106,8 @@ std::ostream & operator<<(std::ostream & os, DominusModel & dModel)
 	os << "\tRotation x=" << dModel.rotation.x << " y=" << dModel.rotation.y << " z=" << dModel.rotation.z << std::endl;
 	os << "\tScaling x=" << dModel.scaling.x << " y=" << dModel.scaling.y << " z=" << dModel.scaling.z << std::endl;
 	os << "\tUVScaling x=" << dModel.UVScaling.x << " y=" << dModel.UVScaling.y << std::endl;
+	os << "Model Matrix " << std::endl;
+	os << DominusTools::mat4ToString(dModel.modelMat) << std::endl;
 	os << "Model info" << std::endl;
 	os << "\tFile path: " << dModel.filePath << std::endl;
 	os << "\tUnique Vertices: " << dModel.vertices.size() << std::endl;

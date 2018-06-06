@@ -8,11 +8,11 @@ layout(location = 0) out vec4 outColor;
 
 layout(binding = 1) uniform sampler2D texSampler;
 
-layout (push_constant) uniform PushConstant
+layout (push_constant) uniform ObjectColor
 {
-	vec4 color;
-} pushConstant;
+	layout(offset = 0) vec4 color;
+} objectColor;
 
 void main() {
-    outColor = pushConstant.color;
+    outColor = objectColor.color;
 }

@@ -1,5 +1,4 @@
 ﻿#include "DominusEngine.h"
-#include "Vertex.h"
 #include <iostream>
 #include <set>
 #include <algorithm>
@@ -11,6 +10,9 @@
 
 DominusEngine::DominusEngine()
 {
+	//players[0] = DominusCharacter("p1", gDevice, glm::vec3(0.0f, 0.0f, 0.0f));
+	//players[1] = DominusCharacter("p2", gDevice, glm::vec3(0.0f, 0.0f, 0.0f));
+
 	lastX = WIDTH / 2.0f;
 	lastY = HEIGHT / 2.0f;
 }
@@ -119,7 +121,77 @@ void DominusEngine::gameLoop()
 void DominusEngine::update(double deltaTime)
 {
 	camera.update(deltaTime);
-	updateMVP();
+	mvp.proj = camera.perspective;
+	mvp.view = camera.view;
+	//mvp.model = glm::mat4(1.0f);
+
+	mvpBuffer.bufferSize = sizeof(mvp);
+	mvpBuffer.transfer(&mvp);
+
+	moveTime += deltaTime;
+
+	if (deltaTime >= 2.0)
+	{
+		sceneModels[1]->color.x += 0.1f;
+		sceneModels[1]->color.y += 0.1f;
+		sceneModels[1]->color.z += 0.1f;
+		sceneModels[1]->position.x += 20.0f;
+		sceneModels[1]->updateModelMatrix();
+
+		updateCommandBuffers();
+
+		moveTime = 0;
+	}
+}
+
+void DominusEngine::updateCommandBuffers() 
+{
+	vkQueueWaitIdle(gGraphicsQueue);
+
+	for (size_t i = 0; i < commandBuffers.size(); i++)
+	{
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		beginInfo.pInheritanceInfo = nullptr;		// Optional.
+
+		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)
+			throw std::runtime_error("Failed to begin command buffer");
+
+		std::array<VkClearValue, 2> clearValues = {};
+		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		clearValues[1].depthStencil = { 1.0f, 0 };
+
+		VkRenderPassBeginInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = gRenderPass;
+		renderPassInfo.framebuffer = gSwapChainFramebuffers[i];
+		renderPassInfo.renderArea.offset = { 0,0 };
+		renderPassInfo.renderArea.extent = gSwapChainExtent;
+		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassInfo.pClearValues = clearValues.data();
+
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[currentPipeline]);
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+
+		VkDeviceSize offsets[1] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
+		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+		for (auto j = 0; j < sceneModels.size(); j++)
+		{
+			vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4(1.0f)), &sceneModels[j]->color);
+			vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::vec4(1.0f)), sizeof(glm::mat4(1.0f)), &sceneModels[j]->modelMat);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(sceneModels[j]->indices.size()), 1, 0, sceneModels[j]->vertexOffset, 0);
+		}
+
+		vkCmdEndRenderPass(commandBuffers[i]);
+
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to record command buffer!");
+	}
 }
 
 void DominusEngine::cleanUp()
@@ -133,7 +205,6 @@ void DominusEngine::cleanUp()
 	vkFreeMemory(gDevice, textureImageMemory, nullptr);
 	vkDestroyDescriptorPool(gDevice, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(gDevice, descriptionSetLayout, nullptr);
-	transformBuffer.destroy();
 	mvpBuffer.destroy();
 	indexBuffer.destroy();
 	vertexBuffer.destroy();
@@ -545,16 +616,19 @@ void DominusEngine::createGraphicsPipeline()
 	dynamicState.dynamicStateCount = 2;
 	dynamicState.pDynamicStates = dynamicStates;
 
-	VkPushConstantRange pushConstants[1] = {};
+	VkPushConstantRange pushConstants[2] = {};
 	pushConstants[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	pushConstants[0].size = sizeof(glm::vec4);
+	pushConstants[0].size = sizeof(glm::vec4(1.0f));
 	pushConstants[0].offset = 0;
+	pushConstants[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	pushConstants[1].size = sizeof(glm::mat4(1.0f));
+	pushConstants[1].offset = sizeof(glm::vec4(1.0f));
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.setLayoutCount = 1;
 	pipelineLayoutInfo.pSetLayouts = &descriptionSetLayout;
-	pipelineLayoutInfo.pushConstantRangeCount = 1;
+	pipelineLayoutInfo.pushConstantRangeCount = 2;
 	pipelineLayoutInfo.pPushConstantRanges = pushConstants;
 
 	if (vkCreatePipelineLayout(gDevice, &pipelineLayoutInfo, nullptr, &gPipelineLayout) != VK_SUCCESS)
@@ -720,9 +794,30 @@ void DominusEngine::createCommandPool()
 
 void DominusEngine::loadModels()
 {
-	DominusModel* tmp = new DominusModel(gDevice, glm::vec3(0, 0, 0));
+	//DominusCharacter* myChar = new DominusCharacter(gDevice, glm::vec3(0, 0, 0));
+	//myChar->vertexOffset = 0;
+	//myChar->loadFromFile("meshes/triangle.obj");
+
+	DominusCharacter* tmp = new DominusCharacter("1", gDevice, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
 	tmp->vertexOffset = 0;
 	tmp->loadFromFile("meshes/invader.obj");
+	std::cout << *tmp << std::endl;
+
+	DominusCharacter* tmp2 = new DominusCharacter("2", gDevice, glm::vec3(40.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+	tmp2->scaling = glm::vec3(4.0f, 2.0f, 2.0f);
+	tmp2->updateModelMatrix();
+	tmp2->vertexOffset = static_cast<uint32_t>(tmp->vertices.size());
+	tmp2->loadFromFile("meshes/invader.obj");
+	std::cout << *tmp << std::endl;
+
+	/*DominusModel* tmp2 = new DominusModel(gDevice, glm::vec3(0.0f, 40.0f, 0.0f));
+	tmp2->scaling = glm::vec3(2.0f, 2.0f, 2.0f);
+	tmp->updateTransMatrix();
+	tmp2->vertexOffset = static_cast<size_t>(tmp->vertices.size());
+	tmp2->loadFromFile("meshes/invader.obj");*/
+
+	sceneModels.push_back(tmp);
+	sceneModels.push_back(tmp2);
 }
 
 void DominusEngine::createVertexBuffer()
@@ -775,22 +870,18 @@ void DominusEngine::createUniformBuffer()
 
 	std::cout << "Creating uniform buffer" << std::endl;
 
-	camera.setTranslation(glm::vec3(0.0f, 0.0f, 40.0f));
+	camera.setTranslation(glm::vec3(0.0f, 20.0f, 0.0f));
 	camera.setPerspective(90.0f, (float)gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 200.0f);
 	camera.updateViewMatrix();
 	camera.setLookAt(glm::vec3(0.0));
 
 	gDevice.createBuffer(mvpBuffer, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	mvp.model = glm::mat4(1.0f);
 	mvp.view = camera.view;
 	mvp.proj = camera.perspective;
-
-	gDevice.createBuffer(transformBuffer, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	transformBuffer.transfer(&tmp);
 }
 
-void DominusEngine::createCommandBuffers(pipelineModes pipelineMode)
+void DominusEngine::createCommandBuffers()
 {
 	commandBuffers.resize(gSwapChainFramebuffers.size());
 
@@ -830,11 +921,12 @@ void DominusEngine::createCommandBuffers(pipelineModes pipelineMode)
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[pipelineMode]);
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[currentPipeline]);
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
 		// Set pushConstants
-		//vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(1, 1, 0, 1));
+		//vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4(1.0f)), &glm::vec4(1, 1, 0, 1));
+		//vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::vec4(1.0f)), sizeof(glm::mat4(1.0f)), &glm::mat4(1.0f));
 
 		VkDeviceSize offsets[1] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
@@ -842,8 +934,11 @@ void DominusEngine::createCommandBuffers(pipelineModes pipelineMode)
 
 		for (auto j = 0; j < sceneModels.size(); j++)
 		{
+ 			vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4(1.0f)), &sceneModels[j]->color);
+			vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::vec4(1.0f)), sizeof(glm::mat4(1.0f)), &sceneModels[j]->modelMat);
+
 			// TODO: Change to draw objects with the same color at the same time save re-binding.
-			if (j == 4)
+			/*if (j == 4)
 			{
 				vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(1, 0, 0, 1));
 			}
@@ -858,7 +953,7 @@ void DominusEngine::createCommandBuffers(pipelineModes pipelineMode)
 			else
 			{
 				vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(1, 1, 0, 1));
-			}
+			}*/
 
 			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(sceneModels[j]->indices.size()), 1, 0, sceneModels[j]->vertexOffset, 0);
 			//sceneModels[j]->draw(&commandBuffers[i]);
@@ -902,13 +997,11 @@ void DominusEngine::createDescriptorPool()
 {
 	std::cout << "Creating descriptor pool" << std::endl;
 
-	std::array<VkDescriptorPoolSize, 3> poolSizes = {};
+	std::array<VkDescriptorPoolSize, 2> poolSizes = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = 1;
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSizes[1].descriptorCount = 1;
-	poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSizes[2].descriptorCount = 1;
 
 	VkDescriptorPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -938,14 +1031,7 @@ void DominusEngine::createDescriptionSetLayout()
 	samplerLayoutBinding.pImmutableSamplers = nullptr;
 	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	VkDescriptorSetLayoutBinding transformLayoutBinding = {};
-	transformLayoutBinding.binding = 2;
-	transformLayoutBinding.descriptorCount = 1;
-	transformLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	transformLayoutBinding.pImmutableSamplers = nullptr;
-	transformLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-	std::array<VkDescriptorSetLayoutBinding, 3> bindings = { mvpLayoutBinding, samplerLayoutBinding, transformLayoutBinding };
+	std::array<VkDescriptorSetLayoutBinding, 2> bindings = { mvpLayoutBinding, samplerLayoutBinding };
 
 	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -985,7 +1071,7 @@ void DominusEngine::createDescriptorSet()
 	imageInfo.imageView = textureImageView;
 	imageInfo.sampler = textureSampler;
 
-	std::array<VkWriteDescriptorSet, 3> descriptorWrites = {};
+	std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
 
 	descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	descriptorWrites[0].dstSet = descriptorSet;
@@ -1002,14 +1088,6 @@ void DominusEngine::createDescriptorSet()
 	descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	descriptorWrites[1].descriptorCount = 1;
 	descriptorWrites[1].pImageInfo = &imageInfo;
-
-	descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	descriptorWrites[2].dstSet = descriptorSet;
-	descriptorWrites[2].dstBinding = 2;
-	descriptorWrites[2].dstArrayElement = 0;
-	descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descriptorWrites[2].descriptorCount = 1;
-	descriptorWrites[2].pBufferInfo = &transformBufferInfo;
 
 	vkUpdateDescriptorSets(gDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
@@ -1122,15 +1200,14 @@ void DominusEngine::drawFrame()
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
 	VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+	VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
-
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
-
-	VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
@@ -1197,15 +1274,6 @@ void DominusEngine::cleanupSwapChain()
 		vkDestroyImageView(gDevice, view, nullptr);
 
 	vkDestroySwapchainKHR(gDevice, gSwapChain, nullptr);
-}
-
-void DominusEngine::updateMVP()
-{
-	mvp.proj = camera.perspective;
-	mvp.view = camera.view;
-
-	mvpBuffer.bufferSize = sizeof(mvp);
-	mvpBuffer.transfer(&mvp);
 }
 
 bool DominusEngine::checkValidationLayerSupport()
@@ -1510,17 +1578,17 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
 	}
 	else if (key == GLFW_KEY_1 && action == GLFW_PRESS)
 	{
-		app->createCommandBuffers(pipelineModes::SOLID);
+		app->updateCommandBuffers();
 	}
 	else if (key == GLFW_KEY_2 && action == GLFW_PRESS)
 	{
-		app->createCommandBuffers(pipelineModes::LINE);
+		app->updateCommandBuffers();
 	}
 	else if (key == GLFW_KEY_3 && action == GLFW_PRESS)
 	{
-		app->createCommandBuffers(pipelineModes::POINT);
+		app->updateCommandBuffers();
 	}
-	}
+}
 
 void DominusEngine::onMousePositionCallback(GLFWwindow * window, double xPos, double yPos)
 {

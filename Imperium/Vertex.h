@@ -1,4 +1,5 @@
 #pragma once
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm.hpp>
 #include <vulkan\vulkan.hpp>
 #include <gtx/hash.hpp>
