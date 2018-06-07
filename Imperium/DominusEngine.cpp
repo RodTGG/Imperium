@@ -7,6 +7,7 @@
 #include <stb_image.h>
 #include <unordered_map>
 #include <sstream>
+#include <random>
 
 DominusEngine::DominusEngine()
 {
@@ -15,6 +16,7 @@ DominusEngine::DominusEngine()
 
 	lastX = WIDTH / 2.0f;
 	lastY = HEIGHT / 2.0f;
+	srand(static_cast<unsigned int>(time(0)));
 }
 
 DominusEngine::~DominusEngine()
@@ -109,6 +111,7 @@ void DominusEngine::gameLoop()
 	{
 		auto currentTime = glfwGetTime();
 		deltaTime = currentTime - lasTime;
+		lasTime = currentTime;
 
 		glfwPollEvents();
 		update(deltaTime);
@@ -130,13 +133,15 @@ void DominusEngine::update(double deltaTime)
 
 	moveTime += deltaTime;
 
-	if (deltaTime >= 2.0)
+	if (moveTime >= 2.0)
 	{
-		sceneModels[1]->color.x += 0.1f;
-		sceneModels[1]->color.y += 0.1f;
-		sceneModels[1]->color.z += 0.1f;
-		sceneModels[1]->position.x += 20.0f;
-		sceneModels[1]->updateModelMatrix();
+		std::cout << "Delta: " << deltaTime << std::endl;
+
+		sceneModels[1]->color.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		sceneModels[1]->color.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		sceneModels[1]->color.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		//sceneModels[1]->position.x += 20.0f;
+		//sceneModels[1]->updateModelMatrix();
 
 		updateCommandBuffers();
 
@@ -870,8 +875,8 @@ void DominusEngine::createUniformBuffer()
 
 	std::cout << "Creating uniform buffer" << std::endl;
 
-	camera.setTranslation(glm::vec3(0.0f, 20.0f, 0.0f));
-	camera.setPerspective(90.0f, (float)gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 200.0f);
+	camera.setTranslation(glm::vec3(0.0f, -40.0f, 0.0f));
+	camera.setPerspective(100.0f, (float)gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 200.0f);
 	camera.updateViewMatrix();
 	camera.setLookAt(glm::vec3(0.0));
 
