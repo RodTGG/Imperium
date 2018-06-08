@@ -100,9 +100,6 @@ private:
 	World world;
 
 	std::unordered_map<int, VkPipeline> pipelines;
-
-	//std::vector<DominusCharacter*> sceneModels;
-	//std::vector<DominusModel*> sceneModels;
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;
 	std::vector<Vertex> sceneVertices;
@@ -149,6 +146,7 @@ private:
 	void createTextureSampler();
 	void drawFrame();
 	void updateCommandBuffers();
+	void updateVertexAndIndexBuffers();
 
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory);
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);

@@ -2,7 +2,7 @@
 #include "DominusTools.h"
 #include <iostream>
 
-DominusObject::DominusObject(const std::string file, const glm::vec3 & aPosition, const glm::vec4 & aColor)
+DominusObject::DominusObject(const glm::vec3 & aPosition, const glm::vec4 & aColor, const std::string file)
 {
 	position = aPosition;
 	rotation = glm::vec3(1.0f);

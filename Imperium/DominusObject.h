@@ -29,7 +29,7 @@ public:
 	// Texture UV Scaling
 	glm::vec2 UVScaling;
 
-	DominusObject(const std::string file, const glm::vec3& position, const glm::vec4& color);
+	DominusObject(const glm::vec3& position, const glm::vec4& color, const std::string file);
 	~DominusObject();
 
 	void updateModelMatrix();

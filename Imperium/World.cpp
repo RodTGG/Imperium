@@ -51,4 +51,18 @@ void World::update(double deltaTime)
 
 		moveTime = 0;
 	}*/
+
+	moveTime += deltaTime;
+
+	if (moveTime > waitTime)
+	{
+		Agent* tmp = new Agent(1, glm::vec3(xOffset, 0.0f, 0.0f));
+		tmp->prepare();
+		players.push_back(tmp);
+
+		xOffset += 20.0f;
+		//waitTime = 10000;
+		moveTime = 0;
+		changed = true;
+	}
 }

@@ -132,6 +132,15 @@ void DominusEngine::update(double deltaTime)
 	mvpBuffer.transfer(&mvp);
 
 	world.update(deltaTime);
+	
+	vkQueueWaitIdle(gGraphicsQueue);
+
+	if (world.changed) 
+	{
+		updateVertexAndIndexBuffers();
+		world.changed = false;
+	}
+
 	updateCommandBuffers();
 }
 
@@ -733,37 +742,6 @@ void DominusEngine::createCommandPool()
 
 void DominusEngine::loadModels()
 {
-	/* Example
-	DominusCharacter* tmp = new DominusCharacter("1", gDevice, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
-	tmp->vertexOffset = 0;
-	tmp->loadFromFile("meshes/invader.obj");
-	std::cout << *tmp << std::endl;
-
-	DominusCharacter* tmp2 = new DominusCharacter("2", gDevice, glm::vec3(40.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
-	tmp2->scaling = glm::vec3(4.0f, 2.0f, 2.0f);
-	tmp2->updateModelMatrix();
-	tmp2->vertexOffset = static_cast<uint32_t>(tmp->vertices.size());
-	tmp2->loadFromFile("meshes/invader.obj");
-	std::cout << *tmp << std::endl;
-
-	sceneModels.push_back(tmp);
-	sceneModels.push_back(tmp2);*/
-
-	/*auto xOffset = 0.0f;
-	auto vOffset = 0;
-
-	for (auto i = 0; i < 100; i++) 
-	{
-		DominusCharacter* tmp = new DominusCharacter("1", gDevice, glm::vec3(xOffset, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
-		tmp->vertexOffset = vOffset;
-		tmp->updateModelMatrix();
-		tmp->loadFromFile("meshes/invader.obj");
-		sceneModels.push_back(tmp);
-
-		xOffset += 20.0f;
-		vOffset += tmp->vertices.size();
-	}*/
-
 	world.loadWorld();
 }
 
@@ -773,7 +751,6 @@ void DominusEngine::createVertexBuffer()
 
 	VkDeviceSize bufferSize;
 	DominusBuffer stagingBuffer;
-	//size_t size;
 
 	std::cout << "Creating vertex buffer" << std::endl;
 
@@ -806,6 +783,28 @@ void DominusEngine::createIndexBuffer()
 	gDevice.createBuffer(stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	gDevice.createBuffer(indexBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
+	stagingBuffer.transfer(sceneIndices.data());
+	gDevice.copyBuffer(stagingBuffer, indexBuffer, bufferSize, gGraphicsQueue);
+}
+
+void DominusEngine::updateVertexAndIndexBuffers()
+{
+	VkDeviceSize bufferSize;
+	DominusBuffer stagingBuffer;
+	std::cout << "Updating vertex buffer and Index buffer" << std::endl;
+
+	for (auto p : world.players) {
+		sceneVertices.insert(sceneVertices.end(), p->model->vertices.begin(), p->model->vertices.end());
+		sceneIndices.insert(sceneIndices.end(), p->model->indices.begin(), p->model->indices.end());
+	}
+
+	bufferSize = sceneVertices.size() * sizeof(Vertex);
+	gDevice.createBuffer(stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	stagingBuffer.transfer(sceneVertices.data());
+	stagingBuffer.~DominusBuffer();
+
+	bufferSize = sceneIndices.size() * sizeof(uint32_t);
+	gDevice.createBuffer(stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	stagingBuffer.transfer(sceneIndices.data());
 	gDevice.copyBuffer(stagingBuffer, indexBuffer, bufferSize, gGraphicsQueue);
 }
@@ -892,8 +891,6 @@ void DominusEngine::createCommandBuffers()
 
 void DominusEngine::updateCommandBuffers()
 {
-	vkQueueWaitIdle(gGraphicsQueue);
-
 	for (size_t i = 0; i < commandBuffers.size(); i++)
 	{
 		VkCommandBufferBeginInfo beginInfo = {};

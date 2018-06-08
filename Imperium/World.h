@@ -16,6 +16,10 @@ public:
 	//std::vector<DominusModel*> sceneModels;
 
 	double moveTime = 0;
+	double waitTime = 2.0;
+	double xOffset = 0.0f;
+
+	bool changed = false;
 
 	World();
 	World(DominusDevice& device);
