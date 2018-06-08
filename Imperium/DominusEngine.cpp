@@ -11,12 +11,11 @@
 
 DominusEngine::DominusEngine()
 {
-	//players[0] = DominusCharacter("p1", gDevice, glm::vec3(0.0f, 0.0f, 0.0f));
-	//players[1] = DominusCharacter("p2", gDevice, glm::vec3(0.0f, 0.0f, 0.0f));
-
 	lastX = WIDTH / 2.0f;
 	lastY = HEIGHT / 2.0f;
 	srand(static_cast<unsigned int>(time(0)));
+
+	world = World(gDevice);
 }
 
 DominusEngine::~DominusEngine()
@@ -113,9 +112,9 @@ void DominusEngine::gameLoop()
 		deltaTime = currentTime - lasTime;
 		lasTime = currentTime;
 
+		drawFrame();
 		glfwPollEvents();
 		update(deltaTime);
-		drawFrame();
 	}
 
 	vkDeviceWaitIdle(gDevice);
@@ -123,6 +122,7 @@ void DominusEngine::gameLoop()
 
 void DominusEngine::update(double deltaTime)
 {
+	// TODO: Update vertex and index buffers when adding scene models
 	camera.update(deltaTime);
 	mvp.proj = camera.perspective;
 	mvp.view = camera.view;
@@ -131,72 +131,8 @@ void DominusEngine::update(double deltaTime)
 	mvpBuffer.bufferSize = sizeof(mvp);
 	mvpBuffer.transfer(&mvp);
 
-	moveTime += deltaTime;
-
-	if (moveTime >= 2.0)
-	{
-		std::cout << "Delta: " << deltaTime << std::endl;
-
-		sceneModels[1]->color.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		sceneModels[1]->color.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		sceneModels[1]->color.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		//sceneModels[1]->position.x += 20.0f;
-		//sceneModels[1]->updateModelMatrix();
-
-		updateCommandBuffers();
-
-		moveTime = 0;
-	}
-}
-
-void DominusEngine::updateCommandBuffers() 
-{
-	vkQueueWaitIdle(gGraphicsQueue);
-
-	for (size_t i = 0; i < commandBuffers.size(); i++)
-	{
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		beginInfo.pInheritanceInfo = nullptr;		// Optional.
-
-		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)
-			throw std::runtime_error("Failed to begin command buffer");
-
-		std::array<VkClearValue, 2> clearValues = {};
-		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-		clearValues[1].depthStencil = { 1.0f, 0 };
-
-		VkRenderPassBeginInfo renderPassInfo = {};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = gRenderPass;
-		renderPassInfo.framebuffer = gSwapChainFramebuffers[i];
-		renderPassInfo.renderArea.offset = { 0,0 };
-		renderPassInfo.renderArea.extent = gSwapChainExtent;
-		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-		renderPassInfo.pClearValues = clearValues.data();
-
-		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[currentPipeline]);
-		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-
-		VkDeviceSize offsets[1] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
-		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-		for (auto j = 0; j < sceneModels.size(); j++)
-		{
-			vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4(1.0f)), &sceneModels[j]->color);
-			vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::vec4(1.0f)), sizeof(glm::mat4(1.0f)), &sceneModels[j]->modelMat);
-			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(sceneModels[j]->indices.size()), 1, 0, sceneModels[j]->vertexOffset, 0);
-		}
-
-		vkCmdEndRenderPass(commandBuffers[i]);
-
-		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
-			throw std::runtime_error("Failed to record command buffer!");
-	}
+	world.update(deltaTime);
+	updateCommandBuffers();
 }
 
 void DominusEngine::cleanUp()
@@ -228,8 +164,6 @@ void DominusEngine::cleanUp()
 	vkDestroyInstance(gInstance, nullptr);
 	glfwDestroyWindow(gWindow);
 	glfwTerminate();
-
-	sceneModels.clear();
 }
 
 void DominusEngine::createVKInstance()
@@ -799,10 +733,7 @@ void DominusEngine::createCommandPool()
 
 void DominusEngine::loadModels()
 {
-	//DominusCharacter* myChar = new DominusCharacter(gDevice, glm::vec3(0, 0, 0));
-	//myChar->vertexOffset = 0;
-	//myChar->loadFromFile("meshes/triangle.obj");
-
+	/* Example
 	DominusCharacter* tmp = new DominusCharacter("1", gDevice, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
 	tmp->vertexOffset = 0;
 	tmp->loadFromFile("meshes/invader.obj");
@@ -815,14 +746,25 @@ void DominusEngine::loadModels()
 	tmp2->loadFromFile("meshes/invader.obj");
 	std::cout << *tmp << std::endl;
 
-	/*DominusModel* tmp2 = new DominusModel(gDevice, glm::vec3(0.0f, 40.0f, 0.0f));
-	tmp2->scaling = glm::vec3(2.0f, 2.0f, 2.0f);
-	tmp->updateTransMatrix();
-	tmp2->vertexOffset = static_cast<size_t>(tmp->vertices.size());
-	tmp2->loadFromFile("meshes/invader.obj");*/
-
 	sceneModels.push_back(tmp);
-	sceneModels.push_back(tmp2);
+	sceneModels.push_back(tmp2);*/
+
+	/*auto xOffset = 0.0f;
+	auto vOffset = 0;
+
+	for (auto i = 0; i < 100; i++) 
+	{
+		DominusCharacter* tmp = new DominusCharacter("1", gDevice, glm::vec3(xOffset, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+		tmp->vertexOffset = vOffset;
+		tmp->updateModelMatrix();
+		tmp->loadFromFile("meshes/invader.obj");
+		sceneModels.push_back(tmp);
+
+		xOffset += 20.0f;
+		vOffset += tmp->vertices.size();
+	}*/
+
+	world.loadWorld();
 }
 
 void DominusEngine::createVertexBuffer()
@@ -835,8 +777,8 @@ void DominusEngine::createVertexBuffer()
 
 	std::cout << "Creating vertex buffer" << std::endl;
 
-	for (auto model : sceneModels)
-		sceneVertices.insert(sceneVertices.end(), model->vertices.begin(), model->vertices.end());
+	for (auto p : world.players)
+		sceneVertices.insert(sceneVertices.end(), p->model->vertices.begin(), p->model->vertices.end());
 
 	bufferSize = sceneVertices.size() * sizeof(Vertex);
 
@@ -856,16 +798,15 @@ void DominusEngine::createIndexBuffer()
 
 	std::cout << "Creating index buffer" << std::endl;
 
-	for (auto model : sceneModels)
-		sceneIndices.insert(sceneIndices.end(), model->indices.begin(), model->indices.end());
+	for (auto p : world.players)
+		sceneIndices.insert(sceneIndices.end(), p->model->indices.begin(), p->model->indices.end());
 
 	bufferSize = sceneIndices.size() * sizeof(uint32_t);
 
 	gDevice.createBuffer(stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	gDevice.createBuffer(indexBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	stagingBuffer.transfer(sceneModels[0]->indices.data());
-
+	stagingBuffer.transfer(sceneIndices.data());
 	gDevice.copyBuffer(stagingBuffer, indexBuffer, bufferSize, gGraphicsQueue);
 }
 
@@ -929,40 +870,69 @@ void DominusEngine::createCommandBuffers()
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[currentPipeline]);
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
-		// Set pushConstants
-		//vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4(1.0f)), &glm::vec4(1, 1, 0, 1));
-		//vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::vec4(1.0f)), sizeof(glm::mat4(1.0f)), &glm::mat4(1.0f));
+		VkDeviceSize offsets[1] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
+		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+		for (auto p : world.players)
+		{
+ 			/*vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4(1.0f)), &world.sceneModels[j]->color);
+			vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::vec4(1.0f)), sizeof(glm::mat4(1.0f)), &world.sceneModels[j]->modelMat);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(world.sceneModels[j]->indices.size()), 1, 0, world.sceneModels[j]->vertexOffset, 0);*/
+		
+			p->draw(&commandBuffers[i], &gPipelineLayout);
+		}
+
+		vkCmdEndRenderPass(commandBuffers[i]);
+
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to record command buffer!");
+	}
+}
+
+void DominusEngine::updateCommandBuffers()
+{
+	vkQueueWaitIdle(gGraphicsQueue);
+
+	for (size_t i = 0; i < commandBuffers.size(); i++)
+	{
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		beginInfo.pInheritanceInfo = nullptr;		// Optional.
+
+		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)
+			throw std::runtime_error("Failed to begin command buffer");
+
+		std::array<VkClearValue, 2> clearValues = {};
+		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		clearValues[1].depthStencil = { 1.0f, 0 };
+
+		VkRenderPassBeginInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = gRenderPass;
+		renderPassInfo.framebuffer = gSwapChainFramebuffers[i];
+		renderPassInfo.renderArea.offset = { 0,0 };
+		renderPassInfo.renderArea.extent = gSwapChainExtent;
+		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassInfo.pClearValues = clearValues.data();
+
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[currentPipeline]);
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
 		VkDeviceSize offsets[1] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-		for (auto j = 0; j < sceneModels.size(); j++)
+		for (auto p : world.players)
 		{
- 			vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4(1.0f)), &sceneModels[j]->color);
-			vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::vec4(1.0f)), sizeof(glm::mat4(1.0f)), &sceneModels[j]->modelMat);
+			/*vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4(1.0f)), &world.sceneModels[j]->color);
+			vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::vec4(1.0f)), sizeof(glm::mat4(1.0f)), &world.sceneModels[j]->modelMat);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(world.sceneModels[j]->indices.size()), 1, 0, world.sceneModels[j]->vertexOffset, 0);*/
 
-			// TODO: Change to draw objects with the same color at the same time save re-binding.
-			/*if (j == 4)
-			{
-				vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(1, 0, 0, 1));
-			}
-			else if (j == 8)
-			{
-				vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(0, 1, 0, 1));
-			}
-			else if (j % 2 == 0)
-			{
-				vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(0, 0, 1, 1));
-			}
-			else
-			{
-				vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &glm::vec4(1, 1, 0, 1));
-			}*/
-
-			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(sceneModels[j]->indices.size()), 1, 0, sceneModels[j]->vertexOffset, 0);
-			//sceneModels[j]->draw(&commandBuffers[i]);
-			//model->draw(&commandBuffers[i]);
+			p->draw(&commandBuffers[i], &gPipelineLayout);
 		}
 
 		vkCmdEndRenderPass(commandBuffers[i]);
@@ -1583,15 +1553,15 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
 	}
 	else if (key == GLFW_KEY_1 && action == GLFW_PRESS)
 	{
-		app->updateCommandBuffers();
+		app->currentPipeline = pipelineModes::SOLID;
 	}
 	else if (key == GLFW_KEY_2 && action == GLFW_PRESS)
 	{
-		app->updateCommandBuffers();
+		app->currentPipeline = pipelineModes::LINE;
 	}
 	else if (key == GLFW_KEY_3 && action == GLFW_PRESS)
 	{
-		app->updateCommandBuffers();
+		app->currentPipeline = pipelineModes::POINT;
 	}
 }
 

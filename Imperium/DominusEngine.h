@@ -8,7 +8,7 @@
 #include "DominusBuffer.h"
 #include "DominusCamera.h"
 #include "DominusTools.h"
-#include "DominusCharacter.h"
+#include "World.h"
 #include "Vertex.h"
 
 #include <vector>
@@ -33,13 +33,7 @@ private:
 		SOLID,
 		LINE,
 		POINT
-	};
-
-	int currentPipeline = pipelineModes::SOLID;
-
-	double moveTime = 0.0;
-
-	std::array<DominusCharacter, 2> players = {};
+	};	
 
 	struct MVPBuffer
 	{
@@ -48,6 +42,11 @@ private:
 		glm::mat4 proj;
 	} mvp;
 
+#ifdef _DEBUG
+	const bool enableValidationLayers = true;
+#else
+	const bool enableValidationLayers = false;
+#endif //  NDEBUG
 
 	const uint32_t WIDTH = 1200;
 	const uint32_t HEIGHT = 720;
@@ -56,31 +55,13 @@ private:
 
 	bool firstMouse = true;
 
+	int currentPipeline = pipelineModes::SOLID;
+
 	double lastX;
 	double lastY;
 	double deltaTime;
 
-	size_t currentFrame = 0;
-
-	#ifdef _DEBUG
-		const bool enableValidationLayers = true;
-	#else
-		const bool enableValidationLayers = false;
-	#endif //  NDEBUG
-
-	const std::vector<const char*> validationLayers = { "VK_LAYER_LUNARG_standard_validation" };
-	const std::vector<const char*> requiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-
-	std::vector<VkImage> swapChainImages;
-	std::vector<VkImageView> swapChainImageViews;
-
-	//std::vector<DominusCharacter*> sceneModels;
-	std::vector<DominusModel*> sceneModels;
-	std::vector<Vertex> sceneVertices;
-	std::vector<uint32_t> sceneIndices;
-
-	DominusCamera camera;
-	DominusDevice gDevice;
+	size_t currentFrame = 0;	
 
 	GLFWwindow* gWindow;
 	VkInstance gInstance;
@@ -99,10 +80,6 @@ private:
 	VkDescriptorSetLayout descriptionSetLayout;
 	VkPipelineLayout gPipelineLayout;
 
-	DominusBuffer vertexBuffer;
-	DominusBuffer indexBuffer;
-	DominusBuffer mvpBuffer;
-
 	VkDescriptorPool descriptorPool;
 	VkDescriptorSet descriptorSet;
 
@@ -115,13 +92,29 @@ private:
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
+	DominusBuffer vertexBuffer;
+	DominusBuffer indexBuffer;
+	DominusBuffer mvpBuffer;
+	DominusCamera camera;
+	DominusDevice gDevice;
+	World world;
+
 	std::unordered_map<int, VkPipeline> pipelines;
+
+	//std::vector<DominusCharacter*> sceneModels;
+	//std::vector<DominusModel*> sceneModels;
+	std::vector<VkImage> swapChainImages;
+	std::vector<VkImageView> swapChainImageViews;
+	std::vector<Vertex> sceneVertices;
+	std::vector<uint32_t> sceneIndices;
 	std::vector<const char*> getRequiredExtensions();
 	std::vector<VkFramebuffer> gSwapChainFramebuffers;
 	std::vector<VkCommandBuffer> commandBuffers;
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
+	const std::vector<const char*> validationLayers = { "VK_LAYER_LUNARG_standard_validation" };
+	const std::vector<const char*> requiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 	void initVulkan();
 	void initWindow();
@@ -155,7 +148,6 @@ private:
 	void createImageViews();
 	void createTextureSampler();
 	void drawFrame();
-
 	void updateCommandBuffers();
 
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory);
@@ -172,11 +164,6 @@ private:
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availableModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-
-	static void onKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
-	static void onMousePositionCallback(GLFWwindow* window, double posX, double posY);
-	static void onWindowResized(GLFWwindow* window, int width, int height);
-	static void glfwErrorCallback(int error, const char* description);
 	
 	VkResult createDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback);
 	VkResult createDebugUtilsCallbackEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pCallback);
@@ -185,4 +172,9 @@ private:
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData);
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* callbackData, void* userData);
+	
+	static void onKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+	static void onMousePositionCallback(GLFWwindow* window, double posX, double posY);
+	static void onWindowResized(GLFWwindow* window, int width, int height);
+	static void glfwErrorCallback(int error, const char* description);
 };

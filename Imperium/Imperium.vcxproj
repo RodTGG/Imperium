@@ -144,23 +144,27 @@
   <ItemGroup>
     <ClCompile Include="DominusBuffer.cpp" />
     <ClCompile Include="DominusCamera.cpp" />
-    <ClCompile Include="DominusCharacter.cpp" />
+    <ClCompile Include="Agent.cpp" />
     <ClCompile Include="DominusDevice.cpp" />
     <ClCompile Include="DominusEngine.cpp" />
     <ClCompile Include="DominusModel.cpp" />
+    <ClCompile Include="DominusObject.cpp" />
     <ClCompile Include="DominusTools.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="Vertex.cpp" />
+    <ClCompile Include="World.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DominusBuffer.h" />
     <ClInclude Include="DominusCamera.h" />
-    <ClInclude Include="DominusCharacter.h" />
+    <ClInclude Include="Agent.h" />
     <ClInclude Include="DominusDevice.h" />
     <ClInclude Include="DominusEngine.h" />
     <ClInclude Include="DominusModel.h" />
+    <ClInclude Include="DominusObject.h" />
     <ClInclude Include="DominusTools.h" />
     <ClInclude Include="Vertex.h" />
+    <ClInclude Include="World.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\default.frag" />
