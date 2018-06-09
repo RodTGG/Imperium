@@ -1,21 +1,22 @@
 #include "DominusObject.h"
+#include "World.h"
 #include "DominusTools.h"
 #include <iostream>
 
-DominusObject::DominusObject(const glm::vec3 & aPosition, const glm::vec4 & aColor, const std::string file)
+DominusObject::DominusObject(World* aWorld, const glm::vec3 & aPosition, const glm::vec4 & aColor, const std::string modelName)
 {
+	world = aWorld;
 	position = aPosition;
 	rotation = glm::vec3(1.0f);
 	scaling = glm::vec3(1.0f);
 	UVScaling = glm::vec2(1.0f);
 	modelMat = glm::mat4(1.0f);
 	color = aColor;
-	model = new DominusModel(file);
+	model = modelName;
 }
 
 DominusObject::~DominusObject()
 {
-	delete model;
 }
 
 void DominusObject::updateModelMatrix()
@@ -33,7 +34,8 @@ void DominusObject::draw(VkCommandBuffer* commandBuffer, VkPipelineLayout* layou
 {
 	 vkCmdPushConstants(*commandBuffer, *layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4(1.0f)), &color);
 	 vkCmdPushConstants(*commandBuffer, *layout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::vec4(1.0f)), sizeof(glm::mat4(1.0f)), &modelMat);
-	 vkCmdDrawIndexed(*commandBuffer, static_cast<uint32_t>(model->indices.size()), 1, 0, vertexOffset, 0);
+	 //vkCmdDrawIndexed(*commandBuffer, static_cast<uint32_t>(model->indices.size()), 1, 0, vertexOffset, 0);
+	 vkCmdDrawIndexed(*commandBuffer, world->getModelIndexCount(model), 1, world->getModelIndexOffset(model), world->getModelVertexOffset(model), 0);
 }
 
 void DominusObject::update(double deltaTime)
@@ -42,7 +44,6 @@ void DominusObject::update(double deltaTime)
 
 void DominusObject::prepare()
 {
-	model->loadFromFile();
 	updateModelMatrix();
 }
 
@@ -55,6 +56,6 @@ std::ostream & operator<<(std::ostream & os, DominusObject & dObject)
 	os << "\tUVScaling x=" << dObject.UVScaling.x << " y=" << dObject.UVScaling.y << std::endl;
 	os << "Model Matrix " << std::endl;
 	os << DominusTools::mat4ToString(dObject.modelMat) << std::endl;
-	os << dObject.model;
+	os << dObject.world->models[dObject.model];
 	return os;
 }

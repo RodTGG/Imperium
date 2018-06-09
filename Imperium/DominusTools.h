@@ -1,5 +1,5 @@
 #pragma once
-#include "DominusModel.h"
+#include <string>
 #include <vulkan\vulkan.h>
 #include <glm.hpp>
 
@@ -8,8 +8,6 @@ class DominusTools
 public:
 	DominusTools();
 	~DominusTools();
-
-	//static std::vector<char> readFile(const std::string& filePath);
 
 	// Load binary SPV file and return created VkShaderModule
 	static VkShaderModule loadShader(const VkDevice& device, const std::string& filePath);

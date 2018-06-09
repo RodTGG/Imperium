@@ -1,7 +1,6 @@
 #include "Agent.h"
 
-
-Agent::Agent(const int aTeam, const glm::vec3 & position, const glm::vec4 & color, const std::string filePath) : DominusObject(position, color, filePath)
+Agent::Agent(World* world, const int aTeam, const glm::vec3 & position, const glm::vec4 & color, const std::string modelName) : DominusObject(world, position, color, modelName)
 {
 	team = aTeam;
 }

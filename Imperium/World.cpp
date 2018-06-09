@@ -8,61 +8,104 @@ World::World()
 World::World(DominusDevice& aDevice)
 {
 	device = &aDevice;
-	players.push_back(new Agent(1));
 }
 
 World::~World()
 {
+	for (auto i : players)
+		delete i;
 }
 
 void World::loadWorld()
 {
-	/*DominusCharacter* p1 = new DominusCharacter("p1", "bop.obj", glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
-	p1->loadFromFile();
-	p1->updateModelMatrix();
-	p1->vertexOffset = 0;
-	players.push_back(p1);
-	sceneModels.push_back(p1);
+	addModel("invader", new DominusModel("invader.obj"));
+	addModel("ball", new DominusModel("bop.obj"));
 
-	DominusCharacter* p2 = new DominusCharacter("p2", "invader.obj", glm::vec3(20.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
-	p2->loadFromFile();
-	p2->updateModelMatrix();
-	p2->vertexOffset = p1->vertices.size();
-	players.push_back(p2);	
-	sceneModels.push_back(p2);*/
+	for (auto m : models) {
+		m.second->loadFromFile();
+	}
+
+	players.push_back(new Agent(this, 1, glm::vec3(0.0f, 0.0f, 0.0f)));
+	players.push_back(new Agent(this, 1, glm::vec3(20.0f, 0.0f, 0.0f)));
 
 	for (auto p : players)
-		p->prepare();
+		p->updateModelMatrix();
 }
 
 void World::update(double deltaTime)
 {
-	/*moveTime += deltaTime;
+	moveTime += deltaTime;
 
-	if (moveTime >= 1.0)
+	if (moveTime >= 2.0)
 	{
 		std::cout << "Delta: " << deltaTime << std::endl;
 
-		sceneModels[0]->color.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		sceneModels[0]->color.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		sceneModels[0]->color.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		sceneModels[1]->position.x += 20.0 * deltaTime;
-		sceneModels[1]->updateModelMatrix();
+		players[0]->color.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		players[0]->color.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		players[0]->color.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		players[1]->position.x += 20.0f * deltaTime;
+		players[1]->updateModelMatrix();
 
+		Agent* tmp = new Agent(this, 1, glm::vec3(xOffset, 0.0f, 0.0f));
+		tmp->updateModelMatrix();
+		players.push_back(tmp);
+
+		xOffset += 20.0f;
 		moveTime = 0;
-	}*/
+	}
 
-	moveTime += deltaTime;
-
-	if (moveTime > waitTime)
+	/*if (moveTime > waitTime)
 	{
 		Agent* tmp = new Agent(1, glm::vec3(xOffset, 0.0f, 0.0f));
 		tmp->prepare();
 		players.push_back(tmp);
+		vOffset = tmp->model->vertices.size();
 
 		xOffset += 20.0f;
-		//waitTime = 10000;
+		waitTime = 10000;
 		moveTime = 0;
 		changed = true;
+	}*/
+}
+
+void World::addModel(std::string modelName, DominusModel* model)
+{
+	if (models.count(modelName) != 0) {
+		std::cout << "Model already exists skipping";
+		return;
 	}
+
+	models[modelName] = model;
+}
+
+uint32_t World::getModelVertexOffset(std::string modelName)
+{
+	if (models.count(modelName) == 0)
+		throw std::runtime_error("Model offset not found for: " + modelName);
+
+	return models[modelName]->vOffset;
+}
+
+uint32_t World::getModelIndexOffset(std::string modelName)
+{
+	if (models.count(modelName) == 0)
+		throw std::runtime_error("Model offset not found for: " + modelName);
+
+	return models[modelName]->iOffset;
+}
+
+uint32_t World::getModelVerticeCount(std::string modelName)
+{
+	if (models.count(modelName) == 0)
+		throw std::runtime_error("Model not found for: " + modelName + " while getting vertice count");
+
+	return models[modelName]->vCount;
+}
+
+uint32_t World::getModelIndexCount(std::string modelName)
+{
+	if (models.count(modelName) == 0)
+		throw std::runtime_error("Model not found for: " + modelName + " while getting index count");
+
+	return models[modelName]->iCount;
 }

@@ -5,7 +5,6 @@
 #include <fstream>
 #include <chrono>
 #include <stb_image.h>
-#include <unordered_map>
 #include <sstream>
 #include <random>
 
@@ -112,9 +111,9 @@ void DominusEngine::gameLoop()
 		deltaTime = currentTime - lasTime;
 		lasTime = currentTime;
 
-		drawFrame();
 		glfwPollEvents();
 		update(deltaTime);
+		drawFrame();
 	}
 
 	vkDeviceWaitIdle(gDevice);
@@ -132,14 +131,6 @@ void DominusEngine::update(double deltaTime)
 	mvpBuffer.transfer(&mvp);
 
 	world.update(deltaTime);
-	
-	vkQueueWaitIdle(gGraphicsQueue);
-
-	if (world.changed) 
-	{
-		updateVertexAndIndexBuffers();
-		world.changed = false;
-	}
 
 	updateCommandBuffers();
 }
@@ -754,8 +745,13 @@ void DominusEngine::createVertexBuffer()
 
 	std::cout << "Creating vertex buffer" << std::endl;
 
-	for (auto p : world.players)
-		sceneVertices.insert(sceneVertices.end(), p->model->vertices.begin(), p->model->vertices.end());
+	uint32_t vOffset = 0;
+
+	for (auto m : world.models) {
+		m.second->vOffset = vOffset;
+		sceneVertices.insert(sceneVertices.end(), m.second->vertices.begin(), m.second->vertices.end());
+		vOffset += m.second->vCount;
+	}
 
 	bufferSize = sceneVertices.size() * sizeof(Vertex);
 
@@ -774,37 +770,21 @@ void DominusEngine::createIndexBuffer()
 	DominusBuffer stagingBuffer;
 
 	std::cout << "Creating index buffer" << std::endl;
+	
+	uint32_t iOffset = 0;
 
-	for (auto p : world.players)
-		sceneIndices.insert(sceneIndices.end(), p->model->indices.begin(), p->model->indices.end());
+	for (auto m : world.models) {
+		m.second->iOffset = iOffset;
+		sceneIndices.insert(sceneIndices.end(), m.second->indices.begin(), m.second->indices.end());
+		iOffset += m.second->iCount;
+		m.second->cleanVectors();
+	}
 
 	bufferSize = sceneIndices.size() * sizeof(uint32_t);
 
 	gDevice.createBuffer(stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	gDevice.createBuffer(indexBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	stagingBuffer.transfer(sceneIndices.data());
-	gDevice.copyBuffer(stagingBuffer, indexBuffer, bufferSize, gGraphicsQueue);
-}
-
-void DominusEngine::updateVertexAndIndexBuffers()
-{
-	VkDeviceSize bufferSize;
-	DominusBuffer stagingBuffer;
-	std::cout << "Updating vertex buffer and Index buffer" << std::endl;
-
-	for (auto p : world.players) {
-		sceneVertices.insert(sceneVertices.end(), p->model->vertices.begin(), p->model->vertices.end());
-		sceneIndices.insert(sceneIndices.end(), p->model->indices.begin(), p->model->indices.end());
-	}
-
-	bufferSize = sceneVertices.size() * sizeof(Vertex);
-	gDevice.createBuffer(stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	stagingBuffer.transfer(sceneVertices.data());
-	stagingBuffer.~DominusBuffer();
-
-	bufferSize = sceneIndices.size() * sizeof(uint32_t);
-	gDevice.createBuffer(stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	stagingBuffer.transfer(sceneIndices.data());
 	gDevice.copyBuffer(stagingBuffer, indexBuffer, bufferSize, gGraphicsQueue);
 }
@@ -875,10 +855,6 @@ void DominusEngine::createCommandBuffers()
 
 		for (auto p : world.players)
 		{
- 			/*vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4(1.0f)), &world.sceneModels[j]->color);
-			vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::vec4(1.0f)), sizeof(glm::mat4(1.0f)), &world.sceneModels[j]->modelMat);
-			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(world.sceneModels[j]->indices.size()), 1, 0, world.sceneModels[j]->vertexOffset, 0);*/
-		
 			p->draw(&commandBuffers[i], &gPipelineLayout);
 		}
 
@@ -891,6 +867,8 @@ void DominusEngine::createCommandBuffers()
 
 void DominusEngine::updateCommandBuffers()
 {
+	vkQueueWaitIdle(gGraphicsQueue);
+
 	for (size_t i = 0; i < commandBuffers.size(); i++)
 	{
 		VkCommandBufferBeginInfo beginInfo = {};
@@ -925,10 +903,6 @@ void DominusEngine::updateCommandBuffers()
 
 		for (auto p : world.players)
 		{
-			/*vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4(1.0f)), &world.sceneModels[j]->color);
-			vkCmdPushConstants(commandBuffers[i], gPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::vec4(1.0f)), sizeof(glm::mat4(1.0f)), &world.sceneModels[j]->modelMat);
-			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(world.sceneModels[j]->indices.size()), 1, 0, world.sceneModels[j]->vertexOffset, 0);*/
-
 			p->draw(&commandBuffers[i], &gPipelineLayout);
 		}
 

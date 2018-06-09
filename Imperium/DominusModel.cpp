@@ -1,6 +1,6 @@
 #include "DominusModel.h"
 #include <iostream>
-//#include <unordered_map>
+#include <unordered_map>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
@@ -16,6 +16,12 @@ DominusModel::DominusModel(const std::string file)
 
 DominusModel::~DominusModel()
 {
+}
+
+void DominusModel::cleanVectors()
+{
+	vertices.clear();
+	indices.clear();
 }
 
 bool DominusModel::loadFromFile()
@@ -35,7 +41,7 @@ bool DominusModel::loadFromFile()
 	indices.clear();
 
 	// Used to de-duplicate vertices that are in the same positions
-	//std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
+	std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
 
 	for (const auto& shape : shapes)
 	{
@@ -59,22 +65,25 @@ bool DominusModel::loadFromFile()
 			};
 
 			// Store unique vertices
-			/*if (uniqueVertices.count(vertex) == 0)
+			if (uniqueVertices.count(vertex) == 0)
 			{
 				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
 				vertices.push_back(vertex);
-			}*/
+			}
 
 			// Simple pushback
-			vertices.push_back(vertex);
+			//vertices.push_back(vertex);
 
 			// Push back indices to unique vertex
-			// indices.push_back(uniqueVertices[vertex]);
+			 indices.push_back(uniqueVertices[vertex]);
 
 			// Simple pushback
-			 indices.push_back(static_cast<uint32_t>(indices.size()));
+			// indices.push_back(static_cast<uint32_t>(indices.size()));
 		}
 	}
+
+	vCount = static_cast<uint32_t>(vertices.size());
+	iCount = static_cast<uint32_t>(indices.size());
 
 	return true;
 }

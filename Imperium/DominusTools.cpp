@@ -1,10 +1,6 @@
 #include "DominusTools.h"
-
 #include <iostream>
 #include <fstream>
-#include <string>
-#include <vector>
-#include <unordered_map>
 
 DominusTools::DominusTools()
 {
@@ -13,27 +9,6 @@ DominusTools::DominusTools()
 DominusTools::~DominusTools()
 {
 }
-
-// Read file and return vector with binary contents
-//std::vector<char> DominusTools::readFile(const std::string & filePath)
-//{
-//	std::cout << "Reading file: " << filePath << std::endl;
-//	std::ifstream file(filePath, std::ios::ate | std::ios::binary);
-//
-//	if (!file.is_open())
-//	{
-//		throw std::runtime_error("Failed to open file");
-//	}
-//
-//	size_t fileSize = (size_t)file.tellg();
-//	std::cout << " (" << fileSize << " bytes)" << std::endl;
-//	std::vector<char> buffer(fileSize);
-//	file.seekg(0);
-//	file.read(buffer.data(), fileSize);
-//	file.close();
-//
-//	return buffer;
-//}
 
 VkShaderModule DominusTools::loadShader(const VkDevice & device, const std::string & filePath)
 {

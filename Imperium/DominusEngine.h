@@ -3,7 +3,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define GLM_ENABLE_EXPERIMENTAL
 
-#include "DominusModel.h"
 #include "DominusDevice.h"
 #include "DominusBuffer.h"
 #include "DominusCamera.h"
@@ -146,7 +145,6 @@ private:
 	void createTextureSampler();
 	void drawFrame();
 	void updateCommandBuffers();
-	void updateVertexAndIndexBuffers();
 
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory);
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);

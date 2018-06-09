@@ -1,13 +1,19 @@
 #pragma once
-#define GLM_ENABLE_EXPERIMENTAL
-#include "glm.hpp"
 #include "Vertex.h"
 #include <vector>
 #include <string>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm.hpp"
+
 class DominusModel
 {
 public:
+	uint32_t vCount;
+	uint32_t iCount;
+	uint32_t vOffset;
+	uint32_t iOffset;
+
 	// Unique model vertices
 	std::vector<Vertex> vertices;
 
@@ -21,8 +27,10 @@ public:
 	DominusModel(const std::string file);
 	~DominusModel();
 
+	void cleanVectors();
+
 	// Loads vertices and indices to vector
-	virtual bool loadFromFile();
+	bool loadFromFile();
 
 	// Overload << operator
 	friend std::ostream& operator<<(std::ostream& os, DominusModel& dModel);

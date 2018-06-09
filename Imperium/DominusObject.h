@@ -1,12 +1,17 @@
 #pragma once
-#include "DominusModel.h"
+class World;
+
+#include <string>
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
+#include <vulkan/vulkan.hpp>
 
 class DominusObject
 {
 public:
-	DominusModel* model;
+	World * world;
+
+	std::string model;
 
 	// Model color
 	glm::vec4 color;
@@ -23,13 +28,10 @@ public:
 	// Model scaling
 	glm::vec3 scaling;
 
-	// Offset in vertex buffer
-	uint32_t vertexOffset;
-
 	// Texture UV Scaling
 	glm::vec2 UVScaling;
 
-	DominusObject(const glm::vec3& position, const glm::vec4& color, const std::string file);
+	DominusObject(World* world, const glm::vec3& position, const glm::vec4& color, const std::string modelName);
 	~DominusObject();
 
 	void updateModelMatrix();
@@ -39,6 +41,6 @@ public:
 	virtual void prepare();
 
 	// Overload << operator
-	friend std::ostream& operator<<(std::ostream& os, DominusModel& dModel);
+	friend std::ostream& operator<<(std::ostream& os, DominusObject& dObject);
 };
 
