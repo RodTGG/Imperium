@@ -26,7 +26,7 @@ void World::loadWorld()
 	}
 
 	players.push_back(new Agent(this, 1, glm::vec3(0.0f, 0.0f, 0.0f)));
-	players.push_back(new Agent(this, 1, glm::vec3(20.0f, 0.0f, 0.0f)));
+	players.push_back(new Agent(this, 2, glm::vec3(80.0f, 0.0f, 0.0f)));
 
 	for (auto p : players)
 		p->updateModelMatrix();
@@ -34,7 +34,11 @@ void World::loadWorld()
 
 void World::update(double deltaTime)
 {
-	moveTime += deltaTime;
+	for (auto p : players)
+		p->update(deltaTime);
+
+	// Testing
+	/*moveTime += deltaTime;
 
 	if (moveTime >= 2.0)
 	{
@@ -47,24 +51,12 @@ void World::update(double deltaTime)
 		players[1]->updateModelMatrix();
 
 		Agent* tmp = new Agent(this, 1, glm::vec3(xOffset, 0.0f, 0.0f));
+		tmp->model = "ball";
 		tmp->updateModelMatrix();
 		players.push_back(tmp);
 
 		xOffset += 20.0f;
 		moveTime = 0;
-	}
-
-	/*if (moveTime > waitTime)
-	{
-		Agent* tmp = new Agent(1, glm::vec3(xOffset, 0.0f, 0.0f));
-		tmp->prepare();
-		players.push_back(tmp);
-		vOffset = tmp->model->vertices.size();
-
-		xOffset += 20.0f;
-		waitTime = 10000;
-		moveTime = 0;
-		changed = true;
 	}*/
 }
 

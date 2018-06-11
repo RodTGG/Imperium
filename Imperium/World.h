@@ -14,10 +14,6 @@ public:
 	std::unordered_map<std::string, DominusModel*> models;
 	std::vector<Agent*> players;
 
-	double moveTime = 0;
-	double waitTime = 2.0;
-	double xOffset = 40.0f;
-
 	World();
 	World(DominusDevice& device);
 	~World();

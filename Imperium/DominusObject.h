@@ -4,6 +4,7 @@ class World;
 #include <string>
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
+#include <gtc/quaternion.hpp>
 #include <vulkan/vulkan.hpp>
 
 class DominusObject
@@ -23,7 +24,7 @@ public:
 	glm::vec3 position;
 
 	// Model rotation
-	glm::vec3 rotation;
+	glm::quat rotation;
 
 	// Model scaling
 	glm::vec3 scaling;
@@ -31,6 +32,7 @@ public:
 	// Texture UV Scaling
 	glm::vec2 UVScaling;
 
+	DominusObject();
 	DominusObject(World* world, const glm::vec3& position, const glm::vec4& color, const std::string modelName);
 	~DominusObject();
 

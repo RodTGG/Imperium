@@ -796,7 +796,7 @@ void DominusEngine::createUniformBuffer()
 	std::cout << "Creating uniform buffer" << std::endl;
 
 	camera.setTranslation(glm::vec3(0.0f, -40.0f, 0.0f));
-	camera.setPerspective(100.0f, (float)gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 200.0f);
+	camera.setPerspective(85.0f, (float)gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 400.0f);
 	camera.updateViewMatrix();
 	camera.setLookAt(glm::vec3(0.0));
 
