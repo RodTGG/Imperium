@@ -2,8 +2,6 @@
 #include "World.h"
 #include "DominusTools.h"
 #include <iostream>
-#define GLM_ENABLE_EXPERIMENTAL
-#include <gtx/quaternion.hpp>
 
 DominusObject::DominusObject()
 {

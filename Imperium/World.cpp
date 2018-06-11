@@ -1,37 +1,53 @@
 #include "World.h"
+#include <GLFW/glfw3.h>
 #include <iostream>
 
 World::World()
 {
 }
 
-World::World(DominusDevice& aDevice)
-{
-	device = &aDevice;
-}
-
 World::~World()
 {
-	for (auto i : players)
-		delete i;
+	for (auto p : players)
+		delete p;
+
+	for (auto m : minerals)
+		delete m;
+
+	for (auto dm : models)
+		delete dm.second;
 }
 
 void World::loadWorld()
 {
 	addModel("invader", new DominusModel("invader.obj"));
-	addModel("ball", new DominusModel("mineral.obj"));
-	addModel("ball", new DominusModel("circle.obj"));
-	addModel("ball", new DominusModel("triangle.obj"));
+	addModel("mineral", new DominusModel("mineral.obj"));
+	addModel("circle", new DominusModel("circle.obj"));
+	addModel("triangle", new DominusModel("triangle.obj"));
 
-	for (auto m : models) {
+	for (auto m : models)
 		m.second->loadFromFile();
-	}
 
 	players.push_back(new Agent(this, 1, glm::vec3(0.0f, 0.0f, 0.0f)));
 	players.push_back(new Agent(this, 2, glm::vec3(80.0f, 0.0f, 0.0f)));
 
+	minerals.push_back(new Mineral(this, glm::vec3(-20.f, 10.f, 0.f), 300, 10));
+	minerals.push_back(new Mineral(this, glm::vec3(100.f, -20.f, 0.f), 300, 10));
+
 	for (auto p : players)
-		p->updateModelMatrix();
+		p->prepare();
+
+	for (auto m : minerals)
+		m->prepare();
+}
+
+void World::draw(VkCommandBuffer * commandBuffer, VkPipelineLayout * layout)
+{
+	for (auto p : players)
+		p->draw(commandBuffer, layout);
+
+	for (auto m : minerals)
+		m->draw(commandBuffer, layout);
 }
 
 void World::update(double deltaTime)
@@ -60,6 +76,11 @@ void World::update(double deltaTime)
 		xOffset += 20.0f;
 		moveTime = 0;
 	}*/
+}
+
+void World::processInput(int key, int action)
+{
+	//if key == glfw
 }
 
 void World::addModel(std::string modelName, DominusModel* model)

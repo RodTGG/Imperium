@@ -1,7 +1,8 @@
 #pragma once
 #include <string>
 #include <vulkan\vulkan.h>
-#include <glm.hpp>
+#include <glm/vec3.hpp>
+#include <glm/mat4x4.hpp>
 
 class DominusTools
 {

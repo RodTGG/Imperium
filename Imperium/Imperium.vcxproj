@@ -92,7 +92,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Users\rodri\Documents\Visual Studio 2017\Libraries\glm-0.9.9.0;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\glfw-3.2.1.bin.WIN64\include;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\stb;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\tiny_obj_loader;C:\VulkanSDK\1.1.73.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Rodri\Documents\Visual Studio 2017\Libraries\glm-0.9.9.0;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\glfw-3.2.1.bin.WIN64\include;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\stb;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\tiny_obj_loader;C:\VulkanSDK\1.1.73.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <BrowseInformation>true</BrowseInformation>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -129,7 +129,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Users\rodri\Documents\Visual Studio 2017\Libraries\glm-0.9.9.0;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\glfw-3.2.1.bin.WIN64\include;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\stb;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\tiny_obj_loader;C:\VulkanSDK\1.1.73.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Rodri\Documents\Visual Studio 2017\Libraries\glm-0.9.9.0;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\glfw-3.2.1.bin.WIN64\include;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\stb;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\tiny_obj_loader;C:\VulkanSDK\1.1.73.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -150,6 +150,7 @@
     <ClCompile Include="DominusModel.cpp" />
     <ClCompile Include="DominusObject.cpp" />
     <ClCompile Include="DominusTools.cpp" />
+    <ClCompile Include="Mineral.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="Vertex.cpp" />
     <ClCompile Include="World.cpp" />
@@ -163,6 +164,7 @@
     <ClInclude Include="DominusModel.h" />
     <ClInclude Include="DominusObject.h" />
     <ClInclude Include="DominusTools.h" />
+    <ClInclude Include="Mineral.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="World.h" />
   </ItemGroup>

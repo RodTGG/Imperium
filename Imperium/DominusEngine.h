@@ -17,7 +17,7 @@
 
 #include <vulkan\vulkan.hpp>
 #include <GLFW\glfw3.h>
-#include <glm.hpp>
+#include <glm/mat4x4.hpp>
 
 class DominusEngine
 {

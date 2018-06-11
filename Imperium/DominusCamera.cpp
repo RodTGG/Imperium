@@ -1,7 +1,7 @@
 #include "DominusCamera.h"
 #include "DominusTools.h"
 #include <iostream>
-#include <gtc/matrix_transform.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 DominusCamera::DominusCamera()
 {

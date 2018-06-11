@@ -14,7 +14,7 @@ DominusEngine::DominusEngine()
 	lastY = HEIGHT / 2.0f;
 	srand(static_cast<unsigned int>(time(0)));
 
-	world = World(gDevice);
+	world = World();
 }
 
 DominusEngine::~DominusEngine()
@@ -795,10 +795,10 @@ void DominusEngine::createUniformBuffer()
 
 	std::cout << "Creating uniform buffer" << std::endl;
 
-	camera.setTranslation(glm::vec3(0.0f, -40.0f, 0.0f));
-	camera.setPerspective(85.0f, (float)gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 400.0f);
+	camera.setTranslation(glm::vec3(20.f, -60.f, 20.f));
+	camera.setPerspective(85.f, (float)gSwapChainExtent.width / (float)gSwapChainExtent.height, 0.1f, 400.0f);
 	camera.updateViewMatrix();
-	camera.setLookAt(glm::vec3(0.0));
+	camera.setLookAt(glm::vec3(0.f));
 
 	gDevice.createBuffer(mvpBuffer, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -853,10 +853,8 @@ void DominusEngine::createCommandBuffers()
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-		for (auto p : world.players)
-		{
-			p->draw(&commandBuffers[i], &gPipelineLayout);
-		}
+		// Draw world
+		world.draw(&commandBuffers[i], &gPipelineLayout);
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -901,10 +899,8 @@ void DominusEngine::updateCommandBuffers()
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-		for (auto p : world.players)
-		{
-			p->draw(&commandBuffers[i], &gPipelineLayout);
-		}
+		// Draw world
+		world.draw(&commandBuffers[i], &gPipelineLayout);
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -1533,6 +1529,10 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
 	else if (key == GLFW_KEY_3 && action == GLFW_PRESS)
 	{
 		app->currentPipeline = pipelineModes::POINT;
+	}
+	else 
+	{
+		app->world.processInput(key, action);
 	}
 }
 

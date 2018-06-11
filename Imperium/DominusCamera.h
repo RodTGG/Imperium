@@ -3,9 +3,11 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_ENABLE_EXPERIMENTAL
 
-#include <GLFW\glfw3.h>
-#include <glm.hpp>
 #include <ostream>
+#include <glm/vec3.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 
 enum cameraMovements {
 	FOWARD,

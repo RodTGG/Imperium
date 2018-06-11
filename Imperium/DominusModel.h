@@ -3,9 +3,6 @@
 #include <vector>
 #include <string>
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include "glm.hpp"
-
 class DominusModel
 {
 public:
