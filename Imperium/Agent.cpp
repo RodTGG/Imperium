@@ -21,27 +21,27 @@ void Agent::draw(VkCommandBuffer * commandBuffer, VkPipelineLayout * layout)
 
 void Agent::update(double deltaTime)
 {
-	auto tmp = static_cast<float>(deltaTime);
+	// Convert to deltaTime to float
+	auto fTime = static_cast<float>(deltaTime);
+
 	force = calculate(deltaTime);
 	force = glm::min(force, maxForce);
 	accel = force / mass;
-	vel += accel * tmp;
+	vel += accel * fTime;
 	vel = glm::min(vel, maxSpeed);
 
-	position.x += vel.x * tmp;
-	position.y += vel.y * tmp;
+	position.x += vel.x * fTime;
+	position.y += vel.y * fTime;
 
-	auto start = glm::normalize(glm::vec3(0.f, 1.f, 0.f));
-	auto end = glm::normalize(position);
-	auto dot = glm::dot(start, end);
-	glm::vec3 axis = glm::cross(start, end);
-	
-	auto rot1 = glm::quat(0.5f, axis.x, axis.y, axis.z);
-	rotation = rot1;
-	/*glm::vec3 right = glm::cross(position, glm::vec3(0.f, 0.f, 1.f));
-	auto dUp = glm::cross(right, position);
-	auto nUp = rot1 * glm::vec3(0.f, 0.f, 1.f);
-	auto rot2 = */
+	if (glm::length(vel) > 0.001f)
+	{
+		auto rot1 = RotationBetweenVectors(glm::vec3(0.f, 1.f, 0.f), position);
+		glm::vec3 right = glm::cross(position, glm::vec3(0.f, 0.f, 1.f));
+		auto dUp = glm::cross(right, position);
+		auto nUp = rot1 * glm::vec3(0.f, 0.f, 1.f);
+		auto rot2 = RotationBetweenVectors(nUp, dUp);
+		rotation = rot2 * rot1;
+	}
 
 	DominusObject::update(deltaTime);
 }
@@ -62,7 +62,7 @@ glm::vec2 Agent::calculate(double deltaTime)
 	return glm::vec2();
 }
 
-float Agent::speed()
+float Agent::getSpeed()
 {
 	return glm::length(vel);
 }
@@ -74,4 +74,19 @@ glm::vec2 Agent::seek(glm::vec3 targetPos)
 
 	auto desired_vel = glm::normalize(tPos - sPos) * maxSpeed;
 	return desired_vel - vel;
+}
+
+glm::quat Agent::RotationBetweenVectors(glm::vec3 start, glm::vec3 dest)
+{
+	glm::vec3 rotationAxis;
+
+	start = glm::normalize(start);
+	dest = glm::normalize(dest);
+
+	rotationAxis = cross(start, dest);
+	float cosTheta = dot(start, dest);
+	float s = sqrt((1 + cosTheta) * 2);
+	float invs = 1 / s;
+
+	return glm::quat(s * 0.5f, rotationAxis.x * invs, rotationAxis.y * invs, rotationAxis.z * invs);
 }

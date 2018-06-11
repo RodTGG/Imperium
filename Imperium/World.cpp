@@ -19,7 +19,9 @@ World::~World()
 void World::loadWorld()
 {
 	addModel("invader", new DominusModel("invader.obj"));
-	addModel("ball", new DominusModel("bop.obj"));
+	addModel("ball", new DominusModel("mineral.obj"));
+	addModel("ball", new DominusModel("circle.obj"));
+	addModel("ball", new DominusModel("triangle.obj"));
 
 	for (auto m : models) {
 		m.second->loadFromFile();
