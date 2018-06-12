@@ -97,6 +97,9 @@ void DominusEngine::run()
 
 	// Try use destructor
 	cleanUp();
+
+	std::cout << "Winner is team " << world.winner << "!" << std::endl;
+	std::cout << "GAME OVER!" << std::endl;
 }
 
 void DominusEngine::gameLoop()
@@ -105,7 +108,7 @@ void DominusEngine::gameLoop()
 
 	auto lasTime = glfwGetTime();
 
-	while (!glfwWindowShouldClose(gWindow))
+	while (!glfwWindowShouldClose(gWindow) && !world.won)
 	{
 		auto currentTime = glfwGetTime();
 		deltaTime = currentTime - lasTime;

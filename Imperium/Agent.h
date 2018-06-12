@@ -11,16 +11,32 @@ public:
 		BASE,
 		BARRACKS,
 		TOWER,
+		BULLET,
 	};
 
-	uint32_t team;
+	enum STATES
+	{
+		MINING,
+	};
 
+	// Agent info
+	int hp = 100;
+	int damage = 10;
+	uint32_t team;
+	uint32_t resource = 100;
+	float collisionRadius = 5;
+	bool alive = true;
 	MODES mode;
-	//std::vector<Agent*> units;
+	STATES state;
+
+	//Barracks
+	uint32_t unitCost = 10;
 
 	//Time Limits
 	float spawnTimer = 2.f;
 	float spawnElapsed = 0.f;
+	float collectionTime = 3.f;
+	float collectionElapsed = 0.f;
 
 	// Physics and limits
 	float decelSpeeds[3] = { 0.9f, 0.5f, 0.2f };
@@ -46,19 +62,29 @@ public:
 	void draw(VkCommandBuffer* commandBuffer, VkPipelineLayout* layout) override;
 	void update(double deltaTime) override;
 	void updatePhysics(float fDeltaTime);
+	void checkCollision();
 
 	float getSpeed();
 	glm::vec2 calculate(float delta);
 
+	// Basic AI functions
 	glm::vec2 seek(glm::vec3 targetPos);
 	glm::vec2 flee(glm::vec3 targetPos);
 	glm::vec2 arrive(glm::vec3 targetPos, float decelSpeed);
 	glm::vec2 pursuit(Agent& evader);
 	glm::vec2 wander(float delta);
+	glm::vec2 mineMineral();
+
+	Agent* getClosestEnemyUnit();
+
+	void spawnUnit(float delta);
+	Agent* getBuilder();
 
 	// TODO: Look for easier and more accurate way, maybe in built GLM function
 	// http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-17-quaternions/
 	glm::quat rotationBetweenVectors(glm::vec3 start, glm::vec3 dest);
+
+	// Random float generator
 	float randomUniform(float min, float max);
 };
 

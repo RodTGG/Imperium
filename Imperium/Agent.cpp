@@ -2,6 +2,8 @@
 #include "World.h"
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
+#include <iostream>
+#include <limits>
 
 Agent::Agent() : DominusObject()
 {
@@ -21,6 +23,7 @@ Agent::Agent(World* world, const uint32_t aTeam, MODES aMode, const glm::vec3 & 
 	{
 	case DEFAULT:
 		model = "invader";
+		hp = 50;
 		break;
 	case BASE:
 		model = "base";
@@ -29,6 +32,7 @@ Agent::Agent(World* world, const uint32_t aTeam, MODES aMode, const glm::vec3 & 
 	case BARRACKS:
 		model = "base";
 		scaling = glm::vec3(5.f);
+		hp = 80;
 		break;
 	case TOWER:
 		model = "tower";
@@ -36,6 +40,7 @@ Agent::Agent(World* world, const uint32_t aTeam, MODES aMode, const glm::vec3 & 
 	case UNIT:
 		model = "invader";
 		scaling = glm::vec3(0.5f);
+		hp = 20;
 		break;
 	default:
 		model = "invader";
@@ -57,31 +62,32 @@ void Agent::update(double deltaTime)
 	// Convert to deltaTime to float
 	auto fDelta = static_cast<float>(deltaTime);
 
-	switch (mode)
-	{
-	case Agent::DEFAULT:
-		updatePhysics(fDelta);
-		DominusObject::update(deltaTime);
-		break;
-	case UNIT:
-		updatePhysics(fDelta);
-		DominusObject::update(deltaTime);
-		break;
-	case Agent::BASE:
-		break;
-	case Agent::BARRACKS:
-		spawnElapsed += fDelta;
+	if (hp <= 0)
+		alive = false;
 
-		if (spawnElapsed > spawnTimer)
+	checkCollision();
+
+	if (alive) {
+		switch (mode)
 		{
-			world->players.push_back(new Agent(world, team, UNIT, position));
-			spawnElapsed = 0.f;
+		case Agent::DEFAULT:
+			updatePhysics(fDelta);
+			DominusObject::update(deltaTime);
+			break;
+		case UNIT:
+			updatePhysics(fDelta);
+			DominusObject::update(deltaTime);
+			break;
+		case Agent::BASE:
+			break;
+		case Agent::BARRACKS:
+			spawnUnit(fDelta);
+			break;
+		case Agent::TOWER:
+			break;
+		default:
+			break;
 		}
-		break;
-	case Agent::TOWER:
-		break;
-	default:
-		break;
 	}
 }
 
@@ -107,23 +113,33 @@ void Agent::updatePhysics(float fDelta)
 	}
 }
 
+void Agent::checkCollision()
+{
+	for (auto p : world->players)
+	{
+		if (p != this && p->team != team)
+		{
+			auto mDistance = glm::distance(p->position, position);
+
+			if (mDistance < collisionRadius)
+			{
+				hp -= p->damage;
+				p->hp -= damage;
+			}
+		}
+	}
+}
+
 glm::vec2 Agent::calculate(float delta)
 {
 	switch (mode)
 	{
 	case Agent::DEFAULT:
+		collectionElapsed += delta;
+		return mineMineral();
 		break;
 	case Agent::UNIT:
-		if (team == 2)
-		{
-			for (auto p : world->players)
-			{
-				if (p != this && p->team != team)
-				{
-					return pursuit(*p);
-				}
-			}
-		}
+		return pursuit(*getClosestEnemyUnit());
 		break;
 	default:
 		break;
@@ -205,6 +221,79 @@ glm::vec2 Agent::wander(float delta)
 	auto tmp2 = tmp[3];
 
 	return seek(tmp2);
+}
+
+glm::vec2 Agent::mineMineral()
+{
+	Mineral* closest = world->minerals.front();
+	auto distanceToClosest = glm::distance(closest->position, position);
+
+	for (auto m : world->minerals)
+	{
+		auto mDistance = glm::distance(m->position, position);
+		if (mDistance < distanceToClosest)
+		{
+			closest = m;
+			distanceToClosest = mDistance;
+		}
+	}
+
+	if (distanceToClosest <= 5.f && collectionElapsed > collectionTime)
+	{
+		resource += closest->collectMineral();
+		std::cout << "Team " << team << "- has " << resource << std::endl;
+		collectionElapsed = 0;
+	}
+
+	return arrive(closest->position, decelSpeeds[0]);
+}
+
+Agent* Agent::getClosestEnemyUnit()
+{
+	Agent* closest = nullptr;
+	auto distanceToClosest = std::numeric_limits<float>::max();
+
+	for (auto p : world->players)
+	{
+		if (p != this && p->team != team)
+		{
+			auto mDistance = glm::distance(p->position, position);
+
+			if (mDistance < distanceToClosest)
+			{
+				closest = p;
+				distanceToClosest = mDistance;
+			}
+		}
+	}
+
+	return closest;
+}
+
+void Agent::spawnUnit(float delta)
+{
+	auto builder = getBuilder();
+
+	if (!builder)
+		return;
+
+	spawnElapsed += delta;
+
+	if (spawnElapsed > spawnTimer && builder->resource >= unitCost)
+	{
+		builder->resource -= unitCost;
+		world->players.push_back(new Agent(world, team, UNIT, position));
+		spawnElapsed = 0.f;
+	}
+}
+
+Agent* Agent::getBuilder()
+{
+	for (auto p : world->players)
+		if (p->team == team && p->mode == DEFAULT)
+			return p;
+
+	return nullptr;
 }
 
 glm::quat Agent::rotationBetweenVectors(glm::vec3 start, glm::vec3 dest)
