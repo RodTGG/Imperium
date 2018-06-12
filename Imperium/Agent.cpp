@@ -7,14 +7,40 @@ Agent::Agent() : DominusObject()
 {
 }
 
-Agent::Agent(World* world, const uint32_t aTeam, const glm::vec3 & position, const glm::vec4 & aColor, const std::string modelName) : DominusObject(world, position, aColor, modelName)
+Agent::Agent(World* world, const uint32_t aTeam, MODES aMode, const glm::vec3 & position, const glm::vec4 & aColor, const std::string modelName) : DominusObject(world, position, aColor, modelName)
 {
 	team = aTeam;
+	mode = aMode;
 
 	if (team == 1)
 		color = glm::vec4(1.f, 0.f, 0.f, 1.f);
 	else if (team == 2)
 		color = glm::vec4(0.f, 0.f, 1.f, 1.f);
+
+	switch (mode)
+	{
+	case DEFAULT:
+		model = "invader";
+		break;
+	case BASE:
+		model = "base";
+		scaling = glm::vec3(5.f);
+		break;
+	case BARRACKS:
+		model = "base";
+		scaling = glm::vec3(5.f);
+		break;
+	case TOWER:
+		model = "tower";
+		break;
+	case UNIT:
+		model = "invader";
+		scaling = glm::vec3(0.5f);
+		break;
+	default:
+		model = "invader";
+		break;
+	}
 }
 
 Agent::~Agent()
@@ -31,6 +57,36 @@ void Agent::update(double deltaTime)
 	// Convert to deltaTime to float
 	auto fDelta = static_cast<float>(deltaTime);
 
+	switch (mode)
+	{
+	case Agent::DEFAULT:
+		updatePhysics(fDelta);
+		DominusObject::update(deltaTime);
+		break;
+	case UNIT:
+		updatePhysics(fDelta);
+		DominusObject::update(deltaTime);
+		break;
+	case Agent::BASE:
+		break;
+	case Agent::BARRACKS:
+		spawnElapsed += fDelta;
+
+		if (spawnElapsed > spawnTimer)
+		{
+			world->players.push_back(new Agent(world, team, UNIT, position));
+			spawnElapsed = 0.f;
+		}
+		break;
+	case Agent::TOWER:
+		break;
+	default:
+		break;
+	}
+}
+
+void Agent::updatePhysics(float fDelta)
+{
 	force = calculate(fDelta);
 	force = glm::min(force, maxForce);
 	accel = force / mass;
@@ -49,26 +105,31 @@ void Agent::update(double deltaTime)
 		auto rot2 = rotationBetweenVectors(nUp, dUp);
 		rotation = rot2 * rot1;
 	}
-
-	DominusObject::update(deltaTime);
 }
 
 glm::vec2 Agent::calculate(float delta)
 {
-	if (team == 1)
+	switch (mode)
 	{
-		//return wander(delta);
-
-		for (auto p : world->players)
+	case Agent::DEFAULT:
+		break;
+	case Agent::UNIT:
+		if (team == 2)
 		{
-			if (p != this)
+			for (auto p : world->players)
 			{
-				return arrive(p->position, decelSpeeds[2]);
+				if (p != this && p->team != team)
+				{
+					return pursuit(*p);
+				}
 			}
 		}
+		break;
+	default:
+		break;
 	}
 
-	return glm::vec2();
+	return glm::vec2(0.f);
 }
 
 float Agent::getSpeed()
@@ -104,7 +165,7 @@ glm::vec2 Agent::arrive(glm::vec3 targetPos, float decelSpeed)
 	auto toTarget = targetPos - position;
 	auto dist = glm::length(toTarget);
 
-	if (dist > 0.f) 
+	if (dist > 0.f)
 	{
 		auto speed = dist / decelSpeed;
 		speed = glm::min(speed, maxSpeed);
@@ -116,6 +177,21 @@ glm::vec2 Agent::arrive(glm::vec3 targetPos, float decelSpeed)
 	return glm::vec2(0.f);
 }
 
+glm::vec2 Agent::pursuit(Agent & evader)
+{
+	auto toEvader = evader.position - position;
+	auto relativeHeading = glm::dot(rotation, evader.rotation);
+
+	if (glm::dot(glm::quat(toEvader), rotation) > 0 && relativeHeading < 0.95)
+		return arrive(evader.position, decelSpeeds[0]);
+
+	auto lookAheadTime = glm::length(toEvader) / (maxSpeed + evader.getSpeed());
+	lookAheadTime += (1 - relativeHeading) * -1;
+	auto lookAheadPos = evader.position + glm::vec3(evader.vel, 0.f) * lookAheadTime;
+
+	return arrive(lookAheadPos, decelSpeeds[0]);
+}
+
 glm::vec2 Agent::wander(float delta)
 {
 	auto wt = wanderTarget;
@@ -124,7 +200,7 @@ glm::vec2 Agent::wander(float delta)
 	glm::normalize(wt);
 	wt *= wanderRadius;
 	auto target = glm::vec3(wt, 0.f) + glm::vec3(wanderDist, 0.f, 0.f);
-	
+
 	auto tmp = glm::translate(modelMat, target);
 	auto tmp2 = tmp[3];
 

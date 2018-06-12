@@ -132,6 +132,7 @@
       <AdditionalIncludeDirectories>C:\Users\Rodri\Documents\Visual Studio 2017\Libraries\glm-0.9.9.0;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\glfw-3.2.1.bin.WIN64\include;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\stb;C:\Users\rodri\Documents\Visual Studio 2017\Libraries\tiny_obj_loader;C:\VulkanSDK\1.1.73.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <BrowseInformation>true</BrowseInformation>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -140,6 +141,9 @@
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
+    <Bscmake>
+      <PreserveSbr>true</PreserveSbr>
+    </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DominusBuffer.cpp" />
@@ -165,12 +169,16 @@
     <ClInclude Include="DominusObject.h" />
     <ClInclude Include="DominusTools.h" />
     <ClInclude Include="Mineral.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="World.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\default.frag" />
     <None Include="shaders\default.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Imperium.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

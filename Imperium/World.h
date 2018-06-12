@@ -12,6 +12,8 @@ public:
 	std::unordered_map<std::string, DominusModel*> models;
 	std::vector<Agent*> players;
 	std::vector<Mineral*> minerals;
+	//std::vector<Agent*> team1;
+	//std::vector<Agent*> team2;
 
 	World();
 	~World();

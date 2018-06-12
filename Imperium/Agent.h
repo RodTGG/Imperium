@@ -4,15 +4,23 @@
 class Agent : public DominusObject
 {
 public:
-	enum AGENT_MODES
+	enum MODES
 	{
-		MINING,
-		RESTING,
-		SHOOTING,
-		WANDERING,
+		DEFAULT,
+		UNIT,
+		BASE,
+		BARRACKS,
+		TOWER,
 	};
 
 	uint32_t team;
+
+	MODES mode;
+	//std::vector<Agent*> units;
+
+	//Time Limits
+	float spawnTimer = 2.f;
+	float spawnElapsed = 0.f;
 
 	// Physics and limits
 	float decelSpeeds[3] = { 0.9f, 0.5f, 0.2f };
@@ -28,16 +36,16 @@ public:
 
 	// Physics Vectors
 	glm::vec2 vel;
-	glm::vec2 heading;
 	glm::vec2 force;
 	glm::vec2 accel;
 
 	Agent();
-	Agent(World* world, const uint32_t team, const glm::vec3& position = glm::vec3(0.0f, 0.0f, 0.0f), const glm::vec4& color = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f), const std::string modelName = "invader");
+	Agent(World* world, const uint32_t team, MODES mode = DEFAULT, const glm::vec3& position = glm::vec3(0.0f, 0.0f, 0.0f), const glm::vec4& color = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f), const std::string modelName = "invader");
 	~Agent();
 
 	void draw(VkCommandBuffer* commandBuffer, VkPipelineLayout* layout) override;
 	void update(double deltaTime) override;
+	void updatePhysics(float fDeltaTime);
 
 	float getSpeed();
 	glm::vec2 calculate(float delta);
@@ -45,7 +53,7 @@ public:
 	glm::vec2 seek(glm::vec3 targetPos);
 	glm::vec2 flee(glm::vec3 targetPos);
 	glm::vec2 arrive(glm::vec3 targetPos, float decelSpeed);
-	glm::vec2 pursuit();
+	glm::vec2 pursuit(Agent& evader);
 	glm::vec2 wander(float delta);
 
 	// TODO: Look for easier and more accurate way, maybe in built GLM function

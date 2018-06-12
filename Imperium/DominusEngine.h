@@ -54,7 +54,7 @@ private:
 
 	bool firstMouse = true;
 
-	int currentPipeline = pipelineModes::SOLID;
+	int currentPipeline = pipelineModes::LINE;
 
 	double lastX;
 	double lastY;

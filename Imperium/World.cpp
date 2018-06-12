@@ -21,6 +21,7 @@ World::~World()
 void World::loadWorld()
 {
 	addModel("invader", new DominusModel("invader.obj"));
+	addModel("base", new DominusModel("base.obj"));
 	addModel("mineral", new DominusModel("mineral.obj"));
 	addModel("circle", new DominusModel("circle.obj"));
 	addModel("triangle", new DominusModel("triangle.obj"));
@@ -28,8 +29,8 @@ void World::loadWorld()
 	for (auto m : models)
 		m.second->loadFromFile();
 
-	players.push_back(new Agent(this, 1, glm::vec3(0.0f, 0.0f, 0.0f)));
-	players.push_back(new Agent(this, 2, glm::vec3(80.0f, 0.0f, 0.0f)));
+	players.push_back(new Agent(this, 1, Agent::DEFAULT, glm::vec3(0.0f, 0.0f, 0.0f)));
+	players.push_back(new Agent(this, 2, Agent::BARRACKS, glm::vec3(80.0f, 0.0f, 0.0f)));
 
 	minerals.push_back(new Mineral(this, glm::vec3(-20.f, 10.f, 0.f), 300, 10));
 	minerals.push_back(new Mineral(this, glm::vec3(100.f, -20.f, 0.f), 300, 10));
@@ -52,8 +53,12 @@ void World::draw(VkCommandBuffer * commandBuffer, VkPipelineLayout * layout)
 
 void World::update(double deltaTime)
 {
-	for (auto p : players)
-		p->update(deltaTime);
+	// Ranged based loop iterator crashing on vector change mid iteration
+	//for (auto p : players)
+	//	p->update(deltaTime);
+
+	for (auto i = 0; i < players.size(); i++)
+		players[i]->update(deltaTime);
 
 	// Testing
 	/*moveTime += deltaTime;

@@ -262,3 +262,4 @@ __pycache__/
 /Test64
 /Imperium/vk_layer_settings.txt
 /Imperium/renderdocCap.cap
+*.rc
