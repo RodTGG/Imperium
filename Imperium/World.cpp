@@ -34,11 +34,15 @@ void World::loadWorld()
 	players.push_back(new Agent(this, 1, Agent::DEFAULT, glm::vec3(0.0f, 0.0f, 0.0f)));
 	players.push_back(new Agent(this, 2, Agent::DEFAULT, glm::vec3(80.0f, 0.0f, 0.0f)));
 
-	players.push_back(new Agent(this, 1, Agent::TOWER, glm::vec3(-20.0f, 0.0f, 0.0f)));
+	players.push_back(new Agent(this, 1, Agent::BARRACKS, glm::vec3(-20.0f, 0.0f, 0.0f)));
 	players.push_back(new Agent(this, 2, Agent::BASE, glm::vec3(100.0f, 0.0f, 0.0f)));
 
+	minerals.push_back(new Mineral(this, glm::vec3(-40.f, 25.f, 0.f), 50, 10));
+	minerals.push_back(new Mineral(this, glm::vec3(-55.f, -5.f, 0.f), 50, 10));
 	minerals.push_back(new Mineral(this, glm::vec3(-40.f, 10.f, 0.f), 50, 10));
+	minerals.push_back(new Mineral(this, glm::vec3(140.f, -5.f, 0.f), 50, 10));
 	minerals.push_back(new Mineral(this, glm::vec3(120.f, -20.f, 0.f), 50, 10));
+	minerals.push_back(new Mineral(this, glm::vec3(140.f, -35.f, 0.f), 50, 10));
 
 	for (auto p : players)
 		p->prepare();
@@ -100,10 +104,7 @@ bool World::hasWon()
 
 void World::togglePaused()
 {
-	if (paused)
-		paused = false;
-	else
-		paused = true;
+	paused = !paused;
 }
 
 void World::addModel(std::string modelName, DominusModel* model)

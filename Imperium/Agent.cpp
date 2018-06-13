@@ -259,7 +259,7 @@ glm::vec2 Agent::mineMineral()
 		return arrive(closest->position, decelSpeeds[0]);
 	}
 
-	return arrive(closest->position, decelSpeeds[0]);
+	return arrive(getTeamType(BASE)->position, decelSpeeds[0]);
 }
 
 Agent* Agent::getClosestEnemyUnit()
@@ -295,7 +295,7 @@ Agent * Agent::getEnemyType(MODES mode)
 Agent * Agent::getTeamType(MODES mode)
 {
 	for (auto p : world->players)
-		if (p->team == team && p->mode == DEFAULT)
+		if (p->team == team && p->mode == mode)
 			return p;
 
 	return nullptr;
