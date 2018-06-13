@@ -27,21 +27,24 @@ Agent::Agent(World* world, const uint32_t aTeam, MODES aMode, const glm::vec3 & 
 		break;
 	case BASE:
 		model = "base";
-		scaling = glm::vec3(5.f);
+		scaling = glm::vec3(3.f);
 		break;
 	case BARRACKS:
-		model = "base";
-		scaling = glm::vec3(5.f);
+		model = "barracks";
+		scaling = glm::vec3(4.f);
 		hp = 80;
 		break;
 	case TOWER:
 		model = "tower";
+		scaling = glm::vec3(4.f);
 		break;
 	case UNIT:
 		model = "invader";
 		scaling = glm::vec3(0.5f);
 		hp = 20;
 		break;
+	case BULLET:
+		model = "circle";
 	default:
 		model = "invader";
 		break;
@@ -65,19 +68,20 @@ void Agent::update(double deltaTime)
 	if (hp <= 0)
 		alive = false;
 
-	checkCollision();
+	if (alive)
+	{
+		checkCollision();
 
-	if (alive) {
 		switch (mode)
 		{
 		case Agent::DEFAULT:
 			updatePhysics(fDelta);
-			DominusObject::update(deltaTime);
 			break;
 		case UNIT:
 			updatePhysics(fDelta);
-			DominusObject::update(deltaTime);
 			break;
+		case BULLET:
+			updatePhysics(fDelta);
 		case Agent::BASE:
 			break;
 		case Agent::BARRACKS:
@@ -89,6 +93,8 @@ void Agent::update(double deltaTime)
 			break;
 		}
 	}
+
+	DominusObject::update(deltaTime);
 }
 
 void Agent::updatePhysics(float fDelta)
@@ -225,24 +231,32 @@ glm::vec2 Agent::wander(float delta)
 
 glm::vec2 Agent::mineMineral()
 {
-	Mineral* closest = world->minerals.front();
-	auto distanceToClosest = glm::distance(closest->position, position);
+	Mineral* closest = nullptr;
+	auto distanceToClosest = std::numeric_limits<float>::max();
 
 	for (auto m : world->minerals)
 	{
-		auto mDistance = glm::distance(m->position, position);
-		if (mDistance < distanceToClosest)
+		if (!m->depleted) 
 		{
-			closest = m;
-			distanceToClosest = mDistance;
+			auto mDistance = glm::distance(m->position, position);
+			if (mDistance < distanceToClosest)
+			{
+				closest = m;
+				distanceToClosest = mDistance;
+			}
 		}
 	}
 
-	if (distanceToClosest <= 5.f && collectionElapsed > collectionTime)
+	if (closest)
 	{
-		resource += closest->collectMineral();
-		std::cout << "Team " << team << "- has " << resource << std::endl;
-		collectionElapsed = 0;
+		if (distanceToClosest <= 5.f && collectionElapsed > collectionTime)
+		{
+			resource += closest->collectMineral();
+			std::cout << "Team " << team << "- has " << resource << std::endl;
+			collectionElapsed = 0;
+		}
+
+		return arrive(closest->position, decelSpeeds[0]);
 	}
 
 	return arrive(closest->position, decelSpeeds[0]);
@@ -257,12 +271,11 @@ Agent* Agent::getClosestEnemyUnit()
 	{
 		if (p != this && p->team != team)
 		{
-			auto mDistance = glm::distance(p->position, position);
-
-			if (mDistance < distanceToClosest)
+			auto pDistance = glm::distance(p->position, position);
+			if (pDistance < distanceToClosest)
 			{
 				closest = p;
-				distanceToClosest = mDistance;
+				distanceToClosest = pDistance;
 			}
 		}
 	}
@@ -270,9 +283,27 @@ Agent* Agent::getClosestEnemyUnit()
 	return closest;
 }
 
+Agent * Agent::getEnemyType(MODES mode)
+{
+	for (auto p : world->players)
+		if (p->team != team && p->mode == mode)
+			return p;
+
+	return nullptr;
+}
+
+Agent * Agent::getTeamType(MODES mode)
+{
+	for (auto p : world->players)
+		if (p->team == team && p->mode == DEFAULT)
+			return p;
+
+	return nullptr;
+}
+
 void Agent::spawnUnit(float delta)
 {
-	auto builder = getBuilder();
+	auto builder = getTeamType(DEFAULT);
 
 	if (!builder)
 		return;
@@ -285,15 +316,6 @@ void Agent::spawnUnit(float delta)
 		world->players.push_back(new Agent(world, team, UNIT, position));
 		spawnElapsed = 0.f;
 	}
-}
-
-Agent* Agent::getBuilder()
-{
-	for (auto p : world->players)
-		if (p->team == team && p->mode == DEFAULT)
-			return p;
-
-	return nullptr;
 }
 
 glm::quat Agent::rotationBetweenVectors(glm::vec3 start, glm::vec3 dest)

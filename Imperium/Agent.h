@@ -19,6 +19,10 @@ public:
 		MINING,
 	};
 
+	/*std::unordered_map<std::string, std::unordered_map<std::string, int>> actions = {
+		{"mine", { {"resources", 20}, {"time", 5}}},
+	};*/
+
 	// Agent info
 	int hp = 100;
 	int damage = 10;
@@ -30,7 +34,7 @@ public:
 	STATES state;
 
 	//Barracks
-	uint32_t unitCost = 10;
+	uint32_t unitCost = 20;
 
 	//Time Limits
 	float spawnTimer = 2.f;
@@ -76,9 +80,10 @@ public:
 	glm::vec2 mineMineral();
 
 	Agent* getClosestEnemyUnit();
+	Agent* getEnemyType(MODES mode);
+	Agent* getTeamType(MODES mode);
 
 	void spawnUnit(float delta);
-	Agent* getBuilder();
 
 	// TODO: Look for easier and more accurate way, maybe in built GLM function
 	// http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-17-quaternions/

@@ -39,6 +39,14 @@ uint32_t Mineral::collectMineral()
 
 		return collectionAmount;
 	}
+	else 
+	{
+		auto result = mineralAmount % collectionAmount;
+		mineralAmount -= collectionAmount;
 
-	return 0;
+		if (!mineralAmount)
+			depleted = true;
+
+		return result;
+	}
 }

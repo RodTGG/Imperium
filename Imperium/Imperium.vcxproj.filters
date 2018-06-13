@@ -97,10 +97,6 @@
     <None Include="shaders\default.vert">
       <Filter>Resource Files</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="Imperium.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
+    <None Include="ClassDiagram.cd" />
   </ItemGroup>
 </Project>

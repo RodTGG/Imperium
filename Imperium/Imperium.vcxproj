@@ -174,11 +174,9 @@
     <ClInclude Include="World.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="ClassDiagram.cd" />
     <None Include="shaders\default.frag" />
     <None Include="shaders\default.vert" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="Imperium.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

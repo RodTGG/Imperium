@@ -98,8 +98,11 @@ void DominusEngine::run()
 	// Try use destructor
 	cleanUp();
 
-	std::cout << "Winner is team " << world.winner << "!" << std::endl;
-	std::cout << "GAME OVER!" << std::endl;
+	if (world.won)
+	{
+		std::cout << "Winner is team " << world.winner << "!" << std::endl;
+		std::cout << "GAME OVER!" << std::endl;
+	}
 }
 
 void DominusEngine::gameLoop()
@@ -115,6 +118,7 @@ void DominusEngine::gameLoop()
 		lasTime = currentTime;
 
 		glfwPollEvents();
+
 		update(deltaTime);
 		drawFrame();
 	}
@@ -773,7 +777,7 @@ void DominusEngine::createIndexBuffer()
 	DominusBuffer stagingBuffer;
 
 	std::cout << "Creating index buffer" << std::endl;
-	
+
 	uint32_t iOffset = 0;
 
 	for (auto m : world.models) {
@@ -1533,7 +1537,7 @@ void DominusEngine::onKeyCallback(GLFWwindow * window, int key, int scancode, in
 	{
 		app->currentPipeline = pipelineModes::POINT;
 	}
-	else 
+	else
 	{
 		app->world.processInput(key, action);
 	}

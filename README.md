@@ -1,2 +1,2 @@
-# Dominus
-A simple attempt at making a game using the VULKAN API
+# Imperium
+An A.I. simulation using the VULKAN API for A.I. for Games
