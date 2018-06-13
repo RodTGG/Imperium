@@ -12,11 +12,14 @@ public:
 		BARRACKS,
 		TOWER,
 		BULLET,
+		RANGED_UNIT,
 	};
 
 	enum STATES
 	{
 		MINING,
+		BUILDING_BARRACKS,
+		BUILDING_TOWER,
 	};
 
 	/*std::unordered_map<std::string, std::unordered_map<std::string, int>> actions = {
@@ -41,6 +44,8 @@ public:
 	float spawnElapsed = 0.f;
 	float collectionTime = 3.f;
 	float collectionElapsed = 0.f;
+	float shootRate = 1.5f;
+	float shootTime = 0.f;
 
 	// Physics and limits
 	float decelSpeeds[3] = { 0.9f, 0.5f, 0.2f };
@@ -78,7 +83,13 @@ public:
 	glm::vec2 pursuit(Agent& evader);
 	glm::vec2 wander(float delta);
 	glm::vec2 mineMineral();
+	glm::vec2 rangedBehavior(float fDelta);
 
+	// Bullets
+	glm::vec2 calculateBullet(Agent* target);
+	glm::vec2 continueOnHeading();
+
+	// Info gathering
 	Agent* getClosestEnemyUnit();
 	Agent* getEnemyType(MODES mode);
 	Agent* getTeamType(MODES mode);

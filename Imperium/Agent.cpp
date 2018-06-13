@@ -45,6 +45,14 @@ Agent::Agent(World* world, const uint32_t aTeam, MODES aMode, const glm::vec3 & 
 		break;
 	case BULLET:
 		model = "circle";
+		hp = 1;
+		damage = 3;
+		break;
+	case RANGED_UNIT:
+		model = "invader";
+		hp = 10;
+		scaling = glm::vec3(0.3f, 0.7f, 0.5f);
+		break;
 	default:
 		model = "invader";
 		break;
@@ -80,8 +88,15 @@ void Agent::update(double deltaTime)
 		case UNIT:
 			updatePhysics(fDelta);
 			break;
-		case BULLET:
+		case RANGED_UNIT:
 			updatePhysics(fDelta);
+			break;
+		case BULLET:
+			continueOnHeading();
+			updatePhysics(fDelta);
+			if (position.x > 200.f || position.y > 200.f || position.z > 200.f)
+				alive = false;
+			break;
 		case Agent::BASE:
 			break;
 		case Agent::BARRACKS:
@@ -129,8 +144,8 @@ void Agent::checkCollision()
 
 			if (mDistance < collisionRadius)
 			{
-				hp -= p->damage;
 				p->hp -= damage;
+				hp -= p->damage;
 			}
 		}
 	}
@@ -140,12 +155,18 @@ glm::vec2 Agent::calculate(float delta)
 {
 	switch (mode)
 	{
-	case Agent::DEFAULT:
+	case DEFAULT:
 		collectionElapsed += delta;
 		return mineMineral();
 		break;
-	case Agent::UNIT:
+	case UNIT:
 		return pursuit(*getClosestEnemyUnit());
+		break;
+	case RANGED_UNIT:
+		return rangedBehavior(delta);
+		break;
+	case BULLET:
+		return continueOnHeading();
 		break;
 	default:
 		break;
@@ -262,6 +283,35 @@ glm::vec2 Agent::mineMineral()
 	return arrive(getTeamType(BASE)->position, decelSpeeds[0]);
 }
 
+glm::vec2 Agent::rangedBehavior(float fDelta)
+{
+	shootTime += fDelta;
+
+	if (glm::distance(getClosestEnemyUnit()->position, position) > 30.f && shootTime > shootRate) 
+	{
+		auto bullet = new Agent(world, team, Agent::BULLET, position);
+		bullet->vel = bullet->calculateBullet(bullet->getClosestEnemyUnit());
+		world->players.push_back(bullet);
+		shootTime = 0;
+	}
+
+	return glm::vec2();
+}
+
+glm::vec2 Agent::calculateBullet(Agent* target)
+{
+	auto toTarget = glm::distance(position, target->position) * maxSpeed;
+	auto myPos = (position - target->position) * toTarget;
+	auto targetPos = (target->position + glm::vec3(target->vel, 0.f)) * toTarget;
+
+	return glm::normalize(targetPos - myPos) * maxSpeed;
+}
+
+glm::vec2 Agent::continueOnHeading()
+{
+	return force;
+}
+
 Agent* Agent::getClosestEnemyUnit()
 {
 	Agent* closest = nullptr;
@@ -269,7 +319,7 @@ Agent* Agent::getClosestEnemyUnit()
 
 	for (auto p : world->players)
 	{
-		if (p != this && p->team != team)
+		if (p != this && p->team != team && p->mode != BULLET)
 		{
 			auto pDistance = glm::distance(p->position, position);
 			if (pDistance < distanceToClosest)

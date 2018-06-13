@@ -34,8 +34,8 @@ void World::loadWorld()
 	players.push_back(new Agent(this, 1, Agent::DEFAULT, glm::vec3(0.0f, 0.0f, 0.0f)));
 	players.push_back(new Agent(this, 2, Agent::DEFAULT, glm::vec3(80.0f, 0.0f, 0.0f)));
 
-	players.push_back(new Agent(this, 1, Agent::BARRACKS, glm::vec3(-20.0f, 0.0f, 0.0f)));
-	players.push_back(new Agent(this, 2, Agent::BASE, glm::vec3(100.0f, 0.0f, 0.0f)));
+	players.push_back(new Agent(this, 1, Agent::BASE, glm::vec3(-20.0f, 0.0f, 0.0f)));
+	players.push_back(new Agent(this, 2, Agent::BARRACKS, glm::vec3(100.0f, 0.0f, 0.0f)));
 
 	minerals.push_back(new Mineral(this, glm::vec3(-40.f, 25.f, 0.f), 50, 10));
 	minerals.push_back(new Mineral(this, glm::vec3(-55.f, -5.f, 0.f), 50, 10));
@@ -82,6 +82,12 @@ void World::processInput(int key, int action)
 {
 	if (key == GLFW_KEY_P && action == GLFW_PRESS)
 		togglePaused();
+	else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+	{
+		//auto bullet = new Agent(this, 1, Agent::BULLET, players[0]->position);
+		//bullet->vel = bullet->calculateBullet(bullet->getClosestEnemyUnit());
+		players.push_back(new Agent(this, 1, Agent::RANGED_UNIT, glm::vec3(-20.0f, 0.0f, 0.0f)));
+	}
 }
 
 bool World::hasWon()
