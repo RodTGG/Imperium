@@ -36,6 +36,10 @@ public:
 	MODES mode;
 	STATES state;
 
+	float shootRange = 50.f;
+	float shootRate = 1.5f;
+	float shootTime = 1.f;
+
 	//Barracks
 	uint32_t unitCost = 20;
 
@@ -44,8 +48,6 @@ public:
 	float spawnElapsed = 0.f;
 	float collectionTime = 3.f;
 	float collectionElapsed = 0.f;
-	float shootRate = 1.5f;
-	float shootTime = 0.f;
 
 	// Physics and limits
 	float decelSpeeds[3] = { 0.9f, 0.5f, 0.2f };

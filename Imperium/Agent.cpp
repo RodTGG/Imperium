@@ -287,12 +287,16 @@ glm::vec2 Agent::rangedBehavior(float fDelta)
 {
 	shootTime += fDelta;
 
-	if (glm::distance(getClosestEnemyUnit()->position, position) > 30.f && shootTime > shootRate) 
+  	if (glm::distance(position, getClosestEnemyUnit()->position) < shootRange && shootTime > shootRate)
 	{
 		auto bullet = new Agent(world, team, Agent::BULLET, position);
 		bullet->vel = bullet->calculateBullet(bullet->getClosestEnemyUnit());
 		world->players.push_back(bullet);
 		shootTime = 0;
+	}
+	else 
+	{
+		return seek(getClosestEnemyUnit()->position);
 	}
 
 	return glm::vec2();
