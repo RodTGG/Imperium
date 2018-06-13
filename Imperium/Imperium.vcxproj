@@ -169,12 +169,10 @@
     <ClInclude Include="DominusObject.h" />
     <ClInclude Include="DominusTools.h" />
     <ClInclude Include="Mineral.h" />
-    <ClInclude Include="resource.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="World.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="ClassDiagram.cd" />
     <None Include="shaders\default.frag" />
     <None Include="shaders\default.vert" />
   </ItemGroup>
