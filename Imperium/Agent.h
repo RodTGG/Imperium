@@ -8,11 +8,11 @@ public:
 	{
 		DEFAULT,
 		UNIT,
+		RANGED_UNIT,
 		BASE,
 		BARRACKS,
 		TOWER,
 		BULLET,
-		RANGED_UNIT,
 	};
 
 	enum STATES

@@ -280,19 +280,29 @@ glm::vec2 Agent::mineMineral()
 		return arrive(closest->position, decelSpeeds[0]);
 	}
 
-	return arrive(getTeamType(BASE)->position, decelSpeeds[0]);
+	return arrive(getTeamType(BARRACKS)->position, decelSpeeds[0]);
 }
 
 glm::vec2 Agent::rangedBehavior(float fDelta)
 {
 	shootTime += fDelta;
 
-  	if (glm::distance(position, getClosestEnemyUnit()->position) < shootRange && shootTime > shootRate)
+	if (glm::distance(position, getClosestEnemyUnit()->position) < shootRange)
 	{
-		auto bullet = new Agent(world, team, Agent::BULLET, position);
-		bullet->vel = bullet->calculateBullet(bullet->getClosestEnemyUnit());
-		world->players.push_back(bullet);
-		shootTime = 0;
+		if (shootTime > shootRate)
+		{
+			auto bullet = new Agent(world, team, Agent::BULLET, position);
+			bullet->vel = bullet->calculateBullet(bullet->getClosestEnemyUnit());
+			world->players.push_back(bullet);
+			shootTime = 0;
+		}
+		else 
+		{
+			accel = glm::vec2();
+			force = glm::vec2();
+			vel = glm::vec2();
+			return glm::vec2();
+		}
 	}
 	else 
 	{
@@ -366,8 +376,10 @@ void Agent::spawnUnit(float delta)
 
 	if (spawnElapsed > spawnTimer && builder->resource >= unitCost)
 	{
+		MODES unitType = static_cast<MODES>((rand() % 2) + 1);
+
 		builder->resource -= unitCost;
-		world->players.push_back(new Agent(world, team, UNIT, position));
+		world->players.push_back(new Agent(world, team, unitType, position));
 		spawnElapsed = 0.f;
 	}
 }

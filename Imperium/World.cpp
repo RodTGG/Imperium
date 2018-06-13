@@ -34,7 +34,7 @@ void World::loadWorld()
 	players.push_back(new Agent(this, 1, Agent::DEFAULT, glm::vec3(0.0f, 0.0f, 0.0f)));
 	players.push_back(new Agent(this, 2, Agent::DEFAULT, glm::vec3(80.0f, 0.0f, 0.0f)));
 
-	players.push_back(new Agent(this, 1, Agent::BASE, glm::vec3(-20.0f, 0.0f, 0.0f)));
+	players.push_back(new Agent(this, 1, Agent::BARRACKS, glm::vec3(-20.0f, 0.0f, 0.0f)));
 	players.push_back(new Agent(this, 2, Agent::BARRACKS, glm::vec3(100.0f, 0.0f, 0.0f)));
 
 	minerals.push_back(new Mineral(this, glm::vec3(-40.f, 25.f, 0.f), 50, 10));
